@@ -35,7 +35,7 @@ macro_rules! gdclass_build_export_methods {
         $($tt:tt)*
     ) => (
         {
-            #[allow(unused_assignments, unused_unsafe, dead_code, unused_variables)]
+            #[allow(unused_assignments, unused_unsafe, dead_code, unused_variables, unused_mut)]
             extern "C" fn godot_invoke(
                 _obj: *mut $crate::sys::godot_object,
                 _md: *mut $crate::libc::c_void,
@@ -234,9 +234,9 @@ pub struct GodotClassInfo {
 }
 
 pub struct GodotRef<T: GodotClass> {
-    this: *mut sys::godot_object,
-    data: T::ClassData,
-    drop: bool,
+    pub(crate) this: *mut sys::godot_object,
+    pub(crate) data: T::ClassData,
+    pub(crate) drop: bool,
 }
 
 pub unsafe trait GodotRustClass: GodotClass {
@@ -251,6 +251,13 @@ pub unsafe trait GodotNativeClass: GodotClass {
 impl <T> GodotRef<T>
     where T: GodotNativeClass
 {
+    pub unsafe fn from_object(obj: *mut sys::godot_object) -> GodotRef<T> {
+        GodotRef {
+            this: obj,
+            data: T::from_object(obj),
+            drop: true,
+        }
+    }
     pub unsafe fn from_object_ref(obj: *mut sys::godot_object) -> GodotRef<T> {
         GodotRef {
             this: obj,
@@ -258,7 +265,51 @@ impl <T> GodotRef<T>
             drop: false,
         }
     }
+
+    pub fn cast<O>(&self) -> Option<GodotRef<O>>
+        where O: GodotNativeClass
+    {
+        if self.is_class(O::godot_name()) {
+            Some(unsafe { GodotRef::from_object_ref(self.this) })
+        } else {
+            None
+        }
+    }
+
+    fn is_class(&self, name: &str) -> bool {
+        use std::ptr;
+        use std::ffi;
+        use std::sync::{Once, ONCE_INIT};
+        unsafe {
+            let api = ::get_api();
+            static mut METHOD_BIND: *mut sys::godot_method_bind = 0 as _;
+            static INIT: Once = ONCE_INIT;
+            INIT.call_once(|| {
+                let class = ffi::CString::new("Object").unwrap();
+                let method = ffi::CString::new("is_class").unwrap();
+                METHOD_BIND = (api.godot_method_bind_get_method)(
+                    class.as_ptr() as *const _,
+                    method.as_ptr() as *const _
+                );
+            });
+
+            let mut argument_buffer = [ptr::null() as *const libc::c_void; 1];
+
+            let mut godot_name = sys::godot_string::default();
+            (api.godot_string_new_data)(&mut godot_name, name.as_ptr() as *const _, name.len() as _);
+            argument_buffer[0] = (&godot_name) as *const _ as *const _;
+
+            let mut ret = false;
+            let ret_ptr = &mut ret as *mut _;
+            (api.godot_method_bind_ptrcall)(METHOD_BIND, self.this, argument_buffer.as_mut_ptr() as *mut _, ret_ptr as *mut _);
+            let mut godot_name = sys::godot_string::default();
+            (api.godot_string_destroy)(&mut godot_name);
+            ret
+
+        }
+    }
 }
+
 
 impl <T> Deref for GodotRef<T>
     where T: GodotNativeClass

@@ -132,6 +132,92 @@ unsafe impl GodotType for f64 {
         }
     }
 }
+#[derive(Clone, Copy)]
+pub struct Color(sys::godot_color);
+
+impl Color {
+    pub fn new_rgba(r: f32, g: f32, b: f32, a: f32) -> Color {
+        unsafe {
+            let mut dest = sys::godot_color::default();
+            (get_api().godot_color_new_rgba)(&mut dest, r, g, b, a);
+            Color(dest)
+        }
+    }
+
+    pub fn new_rgb(r: f32, g: f32, b: f32) -> Color {
+        unsafe {
+            let mut dest = sys::godot_color::default();
+            (get_api().godot_color_new_rgb)(&mut dest, r, g, b);
+            Color(dest)
+        }
+    }
+
+    pub fn r(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_r)(&self.0)
+        }
+    }
+
+    pub fn set_r(&mut self, v: f32) {
+        unsafe {
+            (get_api().godot_color_set_r)(&mut self.0, v)
+        }
+    }
+
+    pub fn g(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_g)(&self.0)
+        }
+    }
+
+    pub fn set_g(&mut self, v: f32) {
+        unsafe {
+            (get_api().godot_color_set_g)(&mut self.0, v)
+        }
+    }
+
+    pub fn b(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_b)(&self.0)
+        }
+    }
+
+    pub fn set_b(&mut self, v: f32) {
+        unsafe {
+            (get_api().godot_color_set_b)(&mut self.0, v)
+        }
+    }
+
+    pub fn a(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_a)(&self.0)
+        }
+    }
+
+    pub fn set_a(&mut self, v: f32) {
+        unsafe {
+            (get_api().godot_color_set_a)(&mut self.0, v)
+        }
+    }
+
+    pub fn h(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_h)(&self.0)
+        }
+    }
+
+    pub fn s(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_s)(&self.0)
+        }
+    }
+
+    pub fn l(&self) -> f32 {
+        unsafe {
+            (get_api().godot_color_get_l)(&self.0)
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Basis(sys::godot_basis);

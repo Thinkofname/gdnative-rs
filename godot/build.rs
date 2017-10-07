@@ -9,6 +9,7 @@ use std::env;
 use std::path::PathBuf;
 use std::io::Write;
 use std::fmt;
+use std::borrow::Cow;
 
 fn main() {
     let classes: Vec<GodotClass> = serde_json::from_reader(File::open("api.json").unwrap())
@@ -147,19 +148,44 @@ fn rust_safe_name(name: &str) -> &str {
         "use" => "_use",
         "type" => "_type",
         "loop" => "_loop",
+        "in" => "_in",
         name => name,
     }
 }
 
-fn godot_type_to_rust(ty: &str) -> Option<&str> {
+fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
     match ty {
-        "void" => Some("()"),
-        "String" => Some("String"),
-        "float" => Some("f64"),
-        "bool" => Some("bool"),
-        "Vector3" => Some("Vector3"),
-        "Basis" => Some("Basis"),
-        _ => None,
+        "void" => Some("()".into()),
+        "String" => Some("String".into()),
+        "float" => Some("f64".into()),
+        "int" => Some("i64".into()),
+        "bool" => Some("bool".into()),
+        "Vector3" => Some("Vector3".into()),
+        "Basis" => Some("Basis".into()),
+        "Color" => Some("Color".into()),
+        "Array" => None, // TODO:
+        "Variant" => None, // TODO:
+        "RID" => None, // TODO:
+        "Vector2" => None, // TODO:
+        "Rect2" => None, // TODO:
+        "Rect3" => None, // TODO:
+        "Plane" => None, // TODO:
+        "Quat" => None, // TODO:
+        "Transform" => None, // TODO:
+        "Transform2D" => None, // TODO:
+        "Dictionary" => None, // TODO:
+        "NodePath" => None, // TODO:
+        "PoolStringArray" => None, // TODO:
+        "PoolByteArray" => None, // TODO:
+        "PoolVector2Array" => None, // TODO:
+        "PoolVector3Array" => None, // TODO:
+        "PoolIntArray" => None, // TODO:
+        "PoolRealArray" => None, // TODO:
+        "PoolColorArray" => None, // TODO:
+        ty if ty.starts_with("enum.") => None, // TODO: Enums
+        ty => {
+            Some(format!("Option<GodotRef<{}>>", ty).into())
+        },
     }
 }
 fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usize) {
@@ -170,6 +196,11 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             "#, name = name, arg = arg).unwrap();
         },
         "float" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
+        "int" => {
             writeln!(w, r#"
             argument_buffer[{arg}] = (&{name}) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
@@ -191,22 +222,38 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
-        _ => unimplemented!("ty: {:?}", ty),
+        "Color" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
+        _ty => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = if let Some(mut arg) = {name} {{
+                arg.drop = false;
+                (&arg.this) as *const _ as *const _
+            }} else {{
+                ptr::null()
+            }};
+            "#, name = name, arg = arg).unwrap();
+        },
     }
 }
 fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
     match ty {
         "bool" => {},
         "float" => {},
+        "int" => {},
         "Vector3" => {},
         "Basis" => {},
+        "Color" => {},
         "String" => {
             writeln!(w, r#"
             let mut __arg_{arg} = sys::godot_string::default();
             (api.godot_string_destroy)(&mut __arg_{arg});
             "#, arg = arg).unwrap();
         }
-        _ => unimplemented!("ty: {:?}", ty),
+        _ty => {},
     }
 }
 
@@ -221,6 +268,12 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
         "float" => {
             writeln!(w, r#"
             let mut ret = 0.0f64;
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
+        "int" => {
+            writeln!(w, r#"
+            let mut ret = 0i64;
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
@@ -248,7 +301,18 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
-        _ => unimplemented!("ty: {:?}", ty),
+        "Color" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_color::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
+        _ty => {
+            writeln!(w, r#"
+            let mut ret: *mut sys::godot_object = ptr::null_mut();
+            let ret_ptr = (&mut ret) as *mut _;
+            "#).unwrap();
+        }
     }
 }
 
@@ -257,6 +321,11 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
         "void" => {
         },
         "float" => {
+            writeln!(w, r#"
+            ret
+            "#).unwrap();
+        }
+        "int" => {
             writeln!(w, r#"
             ret
             "#).unwrap();
@@ -283,7 +352,20 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
             Basis(ret)
             "#).unwrap();
         },
-        _ => unimplemented!("ty: {:?}", ty),
+        "Color" => {
+            writeln!(w, r#"
+            Color(ret)
+            "#).unwrap();
+        },
+        ty => {
+            writeln!(w, r#"
+            if ret.is_null() {{
+                None
+            }} else {{
+                Some(GodotRef::<{}>::from_object_ref(ret))
+            }}
+            "#, ty).unwrap();
+        },
     }
 }
 
@@ -317,5 +399,4 @@ struct GodotArgument {
     ty: String,
     has_default_value: bool,
     default_value: String,
-
 }
