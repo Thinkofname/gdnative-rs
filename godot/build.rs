@@ -158,6 +158,7 @@ fn godot_type_to_rust(ty: &str) -> Option<&str> {
         "float" => Some("f64"),
         "bool" => Some("bool"),
         "Vector3" => Some("Vector3"),
+        "Basis" => Some("Basis"),
         _ => None,
     }
 }
@@ -185,6 +186,11 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
+        "Basis" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
         _ => unimplemented!("ty: {:?}", ty),
     }
 }
@@ -193,6 +199,7 @@ fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
         "bool" => {},
         "float" => {},
         "Vector3" => {},
+        "Basis" => {},
         "String" => {
             writeln!(w, r#"
             let mut __arg_{arg} = sys::godot_string::default();
@@ -235,6 +242,12 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
+        "Basis" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_basis::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
         _ => unimplemented!("ty: {:?}", ty),
     }
 }
@@ -263,6 +276,11 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
         "Vector3" => {
             writeln!(w, r#"
             Vector3(ret)
+            "#).unwrap();
+        },
+        "Basis" => {
+            writeln!(w, r#"
+            Basis(ret)
             "#).unwrap();
         },
         _ => unimplemented!("ty: {:?}", ty),
