@@ -212,9 +212,9 @@ impl Color {
         }
     }
 
-    pub fn l(&self) -> f32 {
+    pub fn v(&self) -> f32 {
         unsafe {
-            (get_api().godot_color_get_l)(&self.0)
+            (get_api().godot_color_get_v)(&self.0)
         }
     }
 }
