@@ -1,0 +1,10 @@
+[package]
+name = "gdnative"
+version = "0.1.0"
+authors = ["Matthew Collins <thethinkofdeath@gmail.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+godot = {path = "../godot"}

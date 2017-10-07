@@ -1,0 +1,11 @@
+[package]
+name = "godot-sys"
+version = "0.1.0"
+authors = ["Matthew Collins <thethinkofdeath@gmail.com>"]
+build = "build.rs"
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+bindgen = "0.30.0"
