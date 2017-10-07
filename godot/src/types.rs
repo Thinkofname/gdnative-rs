@@ -1,7 +1,7 @@
 
 use super::*;
 use std::sync::{Once, ONCE_INIT};
-use std::ops::Deref;
+use std::ops::*;
 
 pub struct Nothing {
     info: GodotClassInfo,
@@ -105,15 +105,11 @@ unsafe impl GodotNativeClass for Node {
 // END
 
 pub unsafe trait GodotType: Sized {
-    type GodotNative;
-
     fn as_variant(&self) -> sys::godot_variant;
     fn from_variant(variant: &mut sys::godot_variant) -> Option<Self>;
 }
 
 unsafe impl GodotType for () {
-    type GodotNative = sys::godot_variant;
-
     fn as_variant(&self) -> sys::godot_variant {
         unsafe {
             let mut ret = sys::godot_variant::default();
@@ -136,8 +132,6 @@ unsafe impl GodotType for () {
 macro_rules! godot_int_impl {
     ($ty:ty) => (
         unsafe impl GodotType for $ty {
-            type GodotNative = sys::godot_variant;
-
             fn as_variant(&self) -> sys::godot_variant {
                 unsafe {
                     let mut ret = sys::godot_variant::default();
@@ -168,8 +162,6 @@ godot_int_impl!(i64);
 macro_rules! godot_uint_impl {
     ($ty:ty) => (
         unsafe impl GodotType for $ty {
-            type GodotNative = sys::godot_variant;
-
             fn as_variant(&self) -> sys::godot_variant {
                 unsafe {
                     let mut ret = sys::godot_variant::default();
@@ -199,8 +191,6 @@ godot_uint_impl!(u64);
 
 
 unsafe impl GodotType for f32 {
-    type GodotNative = sys::godot_variant;
-
     fn as_variant(&self) -> sys::godot_variant {
         unsafe {
             let mut ret = sys::godot_variant::default();
@@ -222,8 +212,6 @@ unsafe impl GodotType for f32 {
 }
 
 unsafe impl GodotType for f64 {
-    type GodotNative = sys::godot_variant;
-
     fn as_variant(&self) -> sys::godot_variant {
         unsafe {
             let mut ret = sys::godot_variant::default();
@@ -237,6 +225,64 @@ unsafe impl GodotType for f64 {
             let api = get_api();
             if (api.godot_variant_get_type)(variant) == sys::godot_variant_type::GODOT_VARIANT_TYPE_REAL {
                 Some((api.godot_variant_as_real)(variant) as Self)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Vector3(sys::godot_vector3);
+
+impl Vector3 {
+    pub fn new(x: f32, y: f32, z: f32) -> Vector3 {
+        unsafe {
+            let mut dest = sys::godot_vector3::default();
+            (get_api().godot_vector3_new)(&mut dest, x, y, z);
+            Vector3(dest)
+        }
+    }
+}
+
+impl Add for Vector3 {
+    type Output = Vector3;
+    fn add(self, other: Vector3) -> Vector3 {
+        unsafe {
+            Vector3((get_api().godot_vector3_operator_add)(
+                &self.0,
+                &other.0,
+            ))
+        }
+    }
+}
+
+impl <'a> Add for &'a Vector3 {
+    type Output = Vector3;
+    fn add(self, other: &Vector3) -> Vector3 {
+        unsafe {
+            Vector3((get_api().godot_vector3_operator_add)(
+                &self.0,
+                &other.0,
+            ))
+        }
+    }
+}
+
+unsafe impl GodotType for Vector3 {
+    fn as_variant(&self) -> sys::godot_variant {
+        unsafe {
+            let mut ret = sys::godot_variant::default();
+            (get_api().godot_variant_new_vector3)(&mut ret, &self.0);
+            ret
+        }
+    }
+
+    fn from_variant(variant: &mut sys::godot_variant) -> Option<Self> {
+        unsafe {
+            let api = get_api();
+            if (api.godot_variant_get_type)(variant) == sys::godot_variant_type::GODOT_VARIANT_TYPE_VECTOR3 {
+                Some(Vector3((api.godot_variant_as_vector3)(variant)))
             } else {
                 None
             }

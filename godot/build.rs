@@ -157,6 +157,7 @@ fn godot_type_to_rust(ty: &str) -> Option<&str> {
         "String" => Some("String"),
         "float" => Some("f64"),
         "bool" => Some("bool"),
+        "Vector3" => Some("Vector3"),
         _ => None,
     }
 }
@@ -179,20 +180,26 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&__arg_{arg}) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
-        _ => unimplemented!(),
+        "Vector3" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
+        _ => unimplemented!("ty: {:?}", ty),
     }
 }
 fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
     match ty {
         "bool" => {},
         "float" => {},
+        "Vector3" => {},
         "String" => {
             writeln!(w, r#"
             let mut __arg_{arg} = sys::godot_string::default();
             (api.godot_string_destroy)(&mut __arg_{arg});
             "#, arg = arg).unwrap();
         }
-        _ => unimplemented!(),
+        _ => unimplemented!("ty: {:?}", ty),
     }
 }
 
@@ -222,7 +229,13 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
-        _ => unimplemented!(),
+        "Vector3" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_vector3::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
+        _ => unimplemented!("ty: {:?}", ty),
     }
 }
 
@@ -247,7 +260,12 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
                 .into_owned()
             "#).unwrap();
         },
-        _ => unimplemented!(),
+        "Vector3" => {
+            writeln!(w, r#"
+            Vector3(ret)
+            "#).unwrap();
+        },
+        _ => unimplemented!("ty: {:?}", ty),
     }
 }
 
