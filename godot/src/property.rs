@@ -103,6 +103,40 @@ impl <C> PropertiesBuilder<C>
             _t: PhantomData,
         }
     }
+    pub fn signal(&mut self, name: &str) -> SignalBuilder<C>
+    {
+        SignalBuilder {
+            parent: self,
+            name: name.into(),
+        }
+    }
+}
+
+pub struct SignalBuilder<'a, C: 'a> {
+    parent: &'a PropertiesBuilder<C>,
+    name: String,
+}
+
+impl <'a, C> SignalBuilder<'a, C> {
+
+    pub fn register(self) {
+        use std::ptr;
+        unsafe {
+            let api = get_api();
+
+            let mut name = sys::godot_string::default();
+            (api.godot_string_new_data)(&mut name, self.name.as_ptr() as *const _, self.name.len() as _);
+            let signal = sys::godot_signal {
+                name: name,
+                num_args: 0,
+                args: ptr::null_mut(),
+                num_default_args: 0,
+                default_args: ptr::null_mut(),
+            };
+
+            (api.godot_nativescript_register_signal)(self.parent.desc, self.parent.class_name, &signal);
+        }
+    }
 }
 
 pub struct PropertyBuilder<'a, C: 'a, S, G, T> {
