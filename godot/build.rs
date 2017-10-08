@@ -160,6 +160,7 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "float" => Some("f64".into()),
         "int" => Some("i64".into()),
         "bool" => Some("bool".into()),
+        "Vector2" => Some("Vector2".into()),
         "Vector3" => Some("Vector3".into()),
         "Basis" => Some("Basis".into()),
         "Color" => Some("Color".into()),
@@ -167,7 +168,6 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "Array" => None, // TODO:
         "Variant" => None, // TODO:
         "RID" => None, // TODO:
-        "Vector2" => None, // TODO:
         "Rect2" => None, // TODO:
         "Rect3" => None, // TODO:
         "Plane" => None, // TODO:
@@ -212,6 +212,11 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&__arg_{arg}) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
+        "Vector2" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
         "Vector3" => {
             writeln!(w, r#"
             argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
@@ -248,6 +253,7 @@ fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
         "bool" => {},
         "float" => {},
         "int" => {},
+        "Vector2" => {},
         "Vector3" => {},
         "Basis" => {},
         "Color" => {},
@@ -290,6 +296,12 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
         "String" => {
             writeln!(w, r#"
             let mut ret = sys::godot_string::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
+        "Vector2" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_vector2::default();
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
@@ -350,6 +362,11 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
             ::std::ffi::CStr::from_ptr((api.godot_string_c_str)(&ret) as *const _)
                 .to_string_lossy()
                 .into_owned()
+            "#).unwrap();
+        },
+        "Vector2" => {
+            writeln!(w, r#"
+            Vector2(ret)
             "#).unwrap();
         },
         "Vector3" => {
