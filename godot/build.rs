@@ -78,6 +78,17 @@ impl Deref for {name} {{
 impl {name} {{
 "#, name = class.name).unwrap();
 
+        if class.singleton {
+            writeln!(output, r#"
+    pub fn godot_singleton() -> GodotRef<{name}> {{
+        unsafe {{
+            let obj = (get_api().godot_global_get_singleton)(b"{name}\0".as_ptr() as *mut _);
+            GodotRef::from_raw(obj as *mut _)
+        }}
+    }}
+            "#, name = class.name).unwrap();
+        }
+
         'method:
         for method in class.methods {
             let rust_ret_type = if let Some(ty) = godot_type_to_rust(&method.return_type) {
@@ -100,17 +111,16 @@ impl {name} {{
 
     pub fn {name}(&self{params}) -> {rust_ret_type} {{
         use std::ptr;
-        use std::ffi;
         unsafe {{
             let api = ::get_api();
             static mut METHOD_BIND: *mut sys::godot_method_bind = 0 as _;
             static INIT: Once = ONCE_INIT;
             INIT.call_once(|| {{
-                let class = ffi::CString::new("{cname}").unwrap();
-                let method = ffi::CString::new("{name}").unwrap();
+                let class = b"{cname}\0".as_ptr();
+                let method = b"{name}\0".as_ptr();
                 METHOD_BIND = (api.godot_method_bind_get_method)(
-                    class.as_ptr() as *const _,
-                    method.as_ptr() as *const _
+                    class as *const _,
+                    method as *const _
                 );
             }});
 
@@ -405,6 +415,7 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
 struct GodotClass {
     name: String,
     base_class: String,
+    singleton: bool,
     is_reference: bool,
 
     methods: Vec<GodotMethod>,
