@@ -34,6 +34,7 @@ pub struct {name} {{
 
 unsafe impl GodotClass for {name} {{
     type ClassData = {name};
+    type Reference = {name};
 
     fn godot_name() -> &'static str {{
         "{name}"
@@ -46,8 +47,9 @@ unsafe impl GodotClass for {name} {{
     fn godot_info(&self) -> &GodotClassInfo {{
         &self.info
     }}
-}}
-unsafe impl GodotNativeClass for {name} {{
+    unsafe fn reference(_this: *mut sys::godot_object, data: &Self::ClassData) -> &Self::Reference {{
+        data
+    }}
     unsafe fn from_object(obj: *mut sys::godot_object) -> Self {{
         {name} {{
             info: GodotClassInfo {{
@@ -135,6 +137,7 @@ impl {name} {{
                     class as *const _,
                     method as *const _
                 );
+                debug_assert!(!METHOD_BIND.is_null());
             }});
 
             "#, cname = class.name, name = method.name, rust_ret_type = rust_ret_type, params = params,
@@ -317,7 +320,7 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
         _ty => {
             writeln!(w, r#"
             argument_buffer[{arg}] = if let Some(arg) = {name} {{
-                (&arg.this) as *const _ as *const _
+                arg.this as *const _ as *const _
             }} else {{
                 ptr::null()
             }};

@@ -66,6 +66,12 @@ impl Vector2 {
         }
     }
 
+    pub fn rotated(&self, phi: f32) -> Vector2 {
+        unsafe {
+            Vector2((get_api().godot_vector2_rotated)(&self.0, phi))
+        }
+    }
+
     pub fn linear_interpolate(&self, b: &Vector2, t: f32) -> Vector2 {
         unsafe {
             Vector2((get_api().godot_vector2_linear_interpolate)(&self.0, &b.0, t))

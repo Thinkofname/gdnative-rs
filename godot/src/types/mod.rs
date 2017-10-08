@@ -298,6 +298,7 @@ pub struct Nothing {
 }
 
 unsafe impl GodotClass for Nothing {
+    type Reference = Nothing;
     type ClassData = Nothing;
 
     fn godot_name() -> &'static str {
@@ -311,14 +312,16 @@ unsafe impl GodotClass for Nothing {
     fn godot_info(&self) -> &GodotClassInfo {
         &self.info
     }
-}
-unsafe impl GodotNativeClass for Nothing {
+
     unsafe fn from_object(obj: *mut sys::godot_object) -> Self {
         Nothing {
             info: GodotClassInfo {
                 this: obj,
             },
         }
+    }
+    unsafe fn reference(_this: *mut sys::godot_object, data: &Self::ClassData) -> &Self::Reference {
+        data
     }
 }
 

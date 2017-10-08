@@ -44,6 +44,7 @@ macro_rules! gdclass_build_export_methods {
                 args: *mut *mut $crate::sys::godot_variant
             ) -> $crate::sys::godot_variant {
                 use std::cell::RefCell;
+                use std::panic::{self, AssertUnwindSafe};
                 unsafe {
                     let api = $crate::get_api();
 
@@ -68,9 +69,26 @@ macro_rules! gdclass_build_export_methods {
                     )*
                     let __rust_ty = &*(ud as *mut RefCell<$classty>);
                     let mut __rust_ty = __rust_ty.borrow_mut();
-                    let rust_ret = __rust_ty.$name($(
-                        $pname
-                    ),*);
+                    let rust_ret = match panic::catch_unwind(AssertUnwindSafe(|| {
+                        __rust_ty.$name($(
+                            $pname
+                        ),*);
+                    })) {
+                        Ok(val) => val,
+                        Err(err) => {
+                            let err = if let Some(err) = err.downcast_ref::<&str>() {
+                                (*err).to_owned()
+                            } else if let Some(err) = err.downcast_ref::<String>() {
+                                (*err).clone()
+                            } else {
+                                "Unknown".to_owned()
+                            };
+                            gprint_error!("Method call failed, everything may be in an invalid state: {:?}", err);
+                            let mut ret = $crate::sys::godot_variant::default();
+                            (api.godot_variant_new_nil)(&mut ret);
+                            return ret;
+                        }
+                    };
                     <$retty as $crate::types::GodotType>::as_variant(&rust_ret)
                 }
             }
@@ -160,11 +178,20 @@ class $name:ident: $parent:ty {
 
         unsafe impl $crate::GodotClass for $name {
             type ClassData = ();
+            type Reference = ::std::cell::RefCell<$name>;
             fn godot_name() -> &'static str {
                 stringify!($name)
             }
             fn godot_info(&self) -> &$crate::GodotClassInfo {
                 &self.godot_info
+            }
+            unsafe fn from_object(_obj: *mut $crate::sys::godot_object) -> Self::ClassData {
+                ()
+            }
+            unsafe fn reference(this: *mut $crate::sys::godot_object, _data: &Self::ClassData) -> &Self::Reference {
+                let api = $crate::get_api();
+                let ud = (api.godot_nativescript_get_userdata)(this);
+                &*(ud as *const _ as *const ::std::cell::RefCell<$name>)
             }
 
             unsafe fn register_class(desc: *mut $crate::libc::c_void) {
@@ -229,11 +256,13 @@ class $name:ident: $parent:ty {
 
 pub unsafe trait GodotClass {
     type ClassData;
+    type Reference;
 
     fn godot_name() -> &'static str;
     fn godot_info(&self) -> &GodotClassInfo;
-
+    unsafe fn from_object(obj: *mut sys::godot_object) -> Self::ClassData;
     unsafe fn register_class(desc: *mut libc::c_void);
+    unsafe fn reference(this: *mut sys::godot_object, data: &Self::ClassData) -> &Self::Reference;
 }
 
 pub struct GodotClassInfo {
@@ -245,14 +274,6 @@ pub struct GodotRef<T: GodotClass> {
     pub(crate) this: *mut sys::godot_object,
     pub(crate) data: T::ClassData,
     pub(crate) reference: bool,
-}
-
-pub unsafe trait GodotRustClass: GodotClass {
-
-}
-
-pub unsafe trait GodotNativeClass: GodotClass {
-    unsafe fn from_object(obj: *mut sys::godot_object) -> Self::ClassData;
 }
 
 macro_rules! call_bool {
@@ -287,7 +308,7 @@ macro_rules! call_bool {
 
 
 impl <T> GodotRef<T>
-    where T: GodotNativeClass
+    where T: GodotClass
 {
     pub unsafe fn from_object(obj: *mut sys::godot_object) -> GodotRef<T> {
         let reference = Self::is_class(obj, "Reference");
@@ -310,7 +331,7 @@ impl <T> GodotRef<T>
     }
 
     pub fn cast<O>(&self) -> Option<GodotRef<O>>
-        where O: GodotNativeClass
+        where O: GodotClass
     {
         if Self::is_class(self.this, O::godot_name()) {
             Some(if self.reference {
@@ -327,6 +348,39 @@ impl <T> GodotRef<T>
                     reference: false,
                 }
             })
+        } else {
+            None
+        }
+    }
+
+    pub fn cast_native<O>(&self) -> Option<GodotRef<O>>
+        where O: GodotClass
+    {
+        let obj: GodotRef<::types::Object> = GodotRef {
+            this: self.this,
+            data: unsafe { ::types::Object::from_object(self.this) },
+            reference: false,
+        };
+        if let Some(script) = obj.get_script().and_then(|v| v.cast::<::types::NativeScript>()) {
+            let class = script.get_class_name();
+            if class == O::godot_name() {
+                Some(if self.reference {
+                    call_bool!(self.this, Reference, reference);
+                    GodotRef {
+                        this: self.this,
+                        data: unsafe { O::from_object(self.this) },
+                        reference: true,
+                    }
+                } else {
+                    GodotRef {
+                        this: self.this,
+                        data: unsafe { O::from_object(self.this) },
+                        reference: false,
+                    }
+                })
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -367,12 +421,14 @@ impl <T> GodotRef<T>
 
 
 impl <T> Deref for GodotRef<T>
-    where T: GodotNativeClass
+    where T: GodotClass
 {
-    type Target = T::ClassData;
+    type Target = T::Reference;
 
     fn deref(&self) -> &Self::Target {
-        &self.data
+        unsafe {
+            T::reference(self.this, &self.data)
+        }
     }
 }
 
@@ -385,19 +441,3 @@ impl <T: GodotClass> Drop for GodotRef<T> {
         }
     }
 }
-
-/*
-impl <T> Deref for GodotRef<T>
-    where T: GodotRustClass
-{
-    type Target = RefCell<T>;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe {
-            let api = ::get_api();
-            let ud = (api.godot_nativescript_get_userdata)(self.this);
-            &*(ud as *const _ as *const RefCell<T>)
-        }
-    }
-}
-*/

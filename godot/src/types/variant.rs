@@ -67,7 +67,7 @@ impl Variant {
     }
 
     pub fn as_object<T>(&self) -> Option<GodotRef<T>>
-        where T: GodotNativeClass
+        where T: GodotClass
     {
         use sys::godot_variant_type::*;
         unsafe {
