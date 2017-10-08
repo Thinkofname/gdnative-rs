@@ -9,6 +9,8 @@ mod vector3;
 pub use self::vector3::*;
 mod vector2;
 pub use self::vector2::*;
+mod variant;
+pub use self::variant::*;
 
 pub unsafe trait GodotType: Sized {
     fn as_variant(&self) -> sys::godot_variant;

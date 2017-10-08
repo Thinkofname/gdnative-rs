@@ -116,6 +116,10 @@ impl {name} {{
                 }
             }
 
+            if method.has_varargs {
+                params.push_str(", varargs: &[Variant]");
+            }
+
             writeln!(output, r#"
 
     pub fn {name}<{type_params}>(&self{params}) -> {rust_ret_type} {{
@@ -133,25 +137,73 @@ impl {name} {{
                 );
             }});
 
-            let mut argument_buffer = [ptr::null() as *const libc::c_void; {arg_count}];
             "#, cname = class.name, name = method.name, rust_ret_type = rust_ret_type, params = params,
-                arg_count = method.arguments.len(), type_params = type_params).unwrap();
+                type_params = type_params).unwrap();
+            if method.has_varargs {
+                writeln!(output, r#"
+            let mut argument_buffer: Vec<*const sys::godot_variant> = Vec::with_capacity({arg_count} + varargs.len());
+                "#, arg_count = method.arguments.len()).unwrap();
 
-            for (idx, argument) in method.arguments.iter().enumerate() {
-                godot_handle_argument_pre(&mut output, &argument.ty, rust_safe_name(&argument.name), idx);
-            }
+                for argument in &method.arguments {
+                    let ty = godot_type_to_rust(&argument.ty).unwrap();
+                    if ty.starts_with("Option") {
+                        writeln!(output, r#"
+                let {name}: Variant = if let Some(o) = {name} {{
+                    o.into()
+                }} else {{ Variant::new_nil() }};
+                        "#, name = rust_safe_name(&argument.name)).unwrap();
+                    } else if ty == "String" {
+                        writeln!(output, r#"
+                let {name}: Variant = Variant::new_string({name});
+                        "#, name = rust_safe_name(&argument.name)).unwrap();
+                    } else {
+                        writeln!(output, r#"
+                let {name}: Variant = {name}.into();
+                        "#, name = rust_safe_name(&argument.name)).unwrap();
+                    }
+                    writeln!(output, r#"
+            argument_buffer.push(&{name}.0);
+                    "#, name = rust_safe_name(&argument.name)).unwrap();
+                }
 
-            godot_handle_return_pre(&mut output, &method.return_type);
+                writeln!(output, r#"
+            for arg in varargs {{
+                argument_buffer.push(&arg.0 as *const _);
+            }}
+            let ret = Variant((api.godot_method_bind_call)(METHOD_BIND, self.info.this, argument_buffer.as_mut_ptr(), argument_buffer.len() as _, ptr::null_mut()));
+                "#).unwrap();
 
-            writeln!(output, r#"
+                if rust_ret_type.starts_with("Option") {
+                    writeln!(output, r#"
+                ret.as_object()
+                    "#).unwrap();
+                } else {
+                    writeln!(output, r#"
+                ret.into()
+                    "#).unwrap();
+                }
+
+            } else {
+                writeln!(output, r#"
+            let mut argument_buffer = [ptr::null() as *const libc::c_void; {arg_count}];
+                "#, arg_count = method.arguments.len()).unwrap();
+
+                for (idx, argument) in method.arguments.iter().enumerate() {
+                    godot_handle_argument_pre(&mut output, &argument.ty, rust_safe_name(&argument.name), idx);
+                }
+
+                godot_handle_return_pre(&mut output, &method.return_type);
+
+                writeln!(output, r#"
             (api.godot_method_bind_ptrcall)(METHOD_BIND, self.info.this, argument_buffer.as_mut_ptr() as *mut _, ret_ptr as *mut _);
-            "#).unwrap();
+                "#).unwrap();
 
-            for (idx, argument) in method.arguments.iter().enumerate() {
-                godot_handle_argument_post(&mut output, &argument.ty, idx);
+                for (idx, argument) in method.arguments.iter().enumerate() {
+                    godot_handle_argument_post(&mut output, &argument.ty, idx);
+                }
+
+                godot_handle_return_post(&mut output, &method.return_type);
             }
-
-            godot_handle_return_post(&mut output, &method.return_type);
 
             writeln!(output, r#"
         }}
@@ -184,8 +236,8 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "Basis" => Some("Basis".into()),
         "Color" => Some("Color".into()),
         "NodePath" => Some("NodePath".into()),
+        "Variant" => Some("Variant".into()),
         "Array" => None, // TODO:
-        "Variant" => None, // TODO:
         "RID" => None, // TODO:
         "Rect2" => None, // TODO:
         "Rect3" => None, // TODO:
@@ -257,6 +309,11 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
+        "Variant" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
         _ty => {
             writeln!(w, r#"
             argument_buffer[{arg}] = if let Some(arg) = {name} {{
@@ -278,6 +335,7 @@ fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
         "Basis" => {},
         "Color" => {},
         "NodePath" => {},
+        "Variant" => {},
         "String" => {
             writeln!(w, r#"
             (api.godot_string_destroy)(&mut __arg_{arg});
@@ -349,6 +407,12 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
+        "Variant" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_variant::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
         _ty => {
             writeln!(w, r#"
             let mut ret: *mut sys::godot_object = ptr::null_mut();
@@ -407,6 +471,11 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
         "NodePath" => {
             writeln!(w, r#"
             NodePath(ret)
+            "#).unwrap();
+        },
+        "Variant" => {
+            writeln!(w, r#"
+            Variant(ret)
             "#).unwrap();
         },
         ty => {
