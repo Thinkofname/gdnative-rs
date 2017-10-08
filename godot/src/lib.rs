@@ -1,6 +1,9 @@
 #[doc(hidden)]
-pub extern crate libc;#[doc(hidden)]
+pub extern crate libc;
+#[doc(hidden)]
 pub extern crate godot_sys as sys;
+#[macro_use]
+extern crate bitflags;
 
 #[macro_export]
 macro_rules! gprint_warn {
@@ -28,6 +31,7 @@ macro_rules! gprint_error {
         let msg = format!($($args)*);
         let line = line!();
         let file = file!();
+        #[allow(unused_unsafe)]
         unsafe {
             let msg = ::std::ffi::CString::new(msg).unwrap();
             let file = ::std::ffi::CString::new(file).unwrap();
@@ -47,6 +51,8 @@ pub use self::internal::*;
 #[macro_use]
 mod class;
 pub use self::class::*;
+mod property;
+pub use self::property::*;
 pub mod types;
 
 
@@ -87,7 +93,6 @@ macro_rules! gd_init {
         #[no_mangle]
         #[doc(hidden)]
         pub extern "C" fn godot_nativescript_init(desc: *mut $crate::libc::c_void) {
-            gprint_warn!("Init nativescript called");
             unsafe {
                 $(
                     <$class as $crate::GodotClass>::register_class(desc);

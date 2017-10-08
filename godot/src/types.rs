@@ -132,6 +132,36 @@ unsafe impl GodotType for f64 {
         }
     }
 }
+
+unsafe impl GodotType for String {
+    fn as_variant(&self) -> sys::godot_variant {
+        unsafe {
+            let mut ret = sys::godot_variant::default();
+            let mut string = sys::godot_string::default();
+            let api = get_api();
+            (api.godot_string_new_data)(&mut string, self.as_ptr() as *const _, self.len() as _);
+            (api.godot_variant_new_string)(&mut ret, &string);
+            (api.godot_string_destroy)(&mut string);
+            ret
+        }
+    }
+
+    fn from_variant(variant: &mut sys::godot_variant) -> Option<Self> {
+        unsafe {
+            let api = get_api();
+            if (api.godot_variant_get_type)(variant) == sys::godot_variant_type::GODOT_VARIANT_TYPE_STRING {
+                let mut variant = (api.godot_variant_as_string)(variant);
+                let ret = ::std::ffi::CStr::from_ptr((api.godot_string_c_str)(&variant))
+                    .to_string_lossy()
+                    .into_owned();
+                (api.godot_string_destroy)(&mut variant);
+                Some(ret)
+            } else {
+                None
+            }
+        }
+    }
+}
 #[derive(Clone, Copy)]
 pub struct Color(sys::godot_color);
 
@@ -215,6 +245,40 @@ impl Color {
     pub fn v(&self) -> f32 {
         unsafe {
             (get_api().godot_color_get_v)(&self.0)
+        }
+    }
+}
+
+pub struct NodePath(sys::godot_node_path);
+
+impl NodePath {
+    pub fn new(path: &str) -> NodePath {
+        unsafe {
+            let mut dest = sys::godot_node_path::default();
+            let mut from = sys::godot_string::default();
+            let api = get_api();
+            (api.godot_string_new_data)(&mut from, path.as_ptr() as *const _, path.len() as _);
+            (api.godot_node_path_new)(&mut dest, &from);
+            (api.godot_string_destroy)(&mut from);
+            NodePath(dest)
+        }
+    }
+}
+
+impl Clone for NodePath {
+    fn clone(&self) -> NodePath {
+        unsafe {
+            let mut dest = sys::godot_node_path::default();
+            (get_api().godot_node_path_new_copy)(&mut dest, &self.0);
+            NodePath(dest)
+        }
+    }
+}
+
+impl Drop for NodePath {
+    fn drop(&mut self) {
+        unsafe {
+            (get_api().godot_node_path_destroy)(&mut self.0);
         }
     }
 }

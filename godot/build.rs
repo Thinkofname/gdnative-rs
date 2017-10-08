@@ -163,6 +163,7 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "Vector3" => Some("Vector3".into()),
         "Basis" => Some("Basis".into()),
         "Color" => Some("Color".into()),
+        "NodePath" => Some("NodePath".into()),
         "Array" => None, // TODO:
         "Variant" => None, // TODO:
         "RID" => None, // TODO:
@@ -174,7 +175,6 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "Transform" => None, // TODO:
         "Transform2D" => None, // TODO:
         "Dictionary" => None, // TODO:
-        "NodePath" => None, // TODO:
         "PoolStringArray" => None, // TODO:
         "PoolByteArray" => None, // TODO:
         "PoolVector2Array" => None, // TODO:
@@ -227,10 +227,14 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
             argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
+        "NodePath" => {
+            writeln!(w, r#"
+            argument_buffer[{arg}] = (&{name}.0) as *const _ as *const _;
+            "#, name = name, arg = arg).unwrap();
+        },
         _ty => {
             writeln!(w, r#"
-            argument_buffer[{arg}] = if let Some(mut arg) = {name} {{
-                arg.drop = false;
+            argument_buffer[{arg}] = if let Some(arg) = {name} {{
                 (&arg.this) as *const _ as *const _
             }} else {{
                 ptr::null()
@@ -247,9 +251,9 @@ fn godot_handle_argument_post<W: Write>(w: &mut W, ty: &str, arg: usize) {
         "Vector3" => {},
         "Basis" => {},
         "Color" => {},
+        "NodePath" => {},
         "String" => {
             writeln!(w, r#"
-            let mut __arg_{arg} = sys::godot_string::default();
             (api.godot_string_destroy)(&mut __arg_{arg});
             "#, arg = arg).unwrap();
         }
@@ -307,6 +311,12 @@ fn godot_handle_return_pre<W: Write>(w: &mut W, ty: &str) {
             let ret_ptr = &mut ret as *mut _;
             "#).unwrap();
         },
+        "NodePath" => {
+            writeln!(w, r#"
+            let mut ret = sys::godot_node_path::default();
+            let ret_ptr = &mut ret as *mut _;
+            "#).unwrap();
+        },
         _ty => {
             writeln!(w, r#"
             let mut ret: *mut sys::godot_object = ptr::null_mut();
@@ -357,12 +367,17 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
             Color(ret)
             "#).unwrap();
         },
+        "NodePath" => {
+            writeln!(w, r#"
+            NodePath(ret)
+            "#).unwrap();
+        },
         ty => {
             writeln!(w, r#"
             if ret.is_null() {{
                 None
             }} else {{
-                Some(GodotRef::<{}>::from_object_ref(ret))
+                Some(GodotRef::<{}>::from_object(ret))
             }}
             "#, ty).unwrap();
         },
@@ -373,6 +388,7 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
 struct GodotClass {
     name: String,
     base_class: String,
+    is_reference: bool,
 
     methods: Vec<GodotMethod>,
 }
