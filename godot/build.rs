@@ -97,19 +97,28 @@ impl {name} {{
                 continue
             };
 
+            let mut type_params = String::new();
             let mut params = String::new();
-            for argument in &method.arguments {
-                let ty = if let Some(ty) = godot_type_to_rust(&argument.ty) {
-                    ty
+            for (idx, argument) in method.arguments.iter().enumerate() {
+                if let Some(ty) = godot_type_to_rust(&argument.ty) {
+                    match argument.ty.as_str() {
+                        "String" => {
+                            let param = format!("P{}", idx);
+                            fmt::Write::write_fmt(&mut type_params, format_args!("{}: AsRef<str>,", param)).unwrap();
+                            fmt::Write::write_fmt(&mut params, format_args!(", {}: {}", rust_safe_name(&argument.name), param)).unwrap();
+                        },
+                        _ => {
+                            fmt::Write::write_fmt(&mut params, format_args!(", {}: {}", rust_safe_name(&argument.name), ty)).unwrap();
+                        },
+                    }
                 } else {
                     continue 'method;
-                };
-                fmt::Write::write_fmt(&mut params, format_args!(", {}: {}", rust_safe_name(&argument.name), ty)).unwrap();
+                }
             }
 
             writeln!(output, r#"
 
-    pub fn {name}(&self{params}) -> {rust_ret_type} {{
+    pub fn {name}<{type_params}>(&self{params}) -> {rust_ret_type} {{
         use std::ptr;
         unsafe {{
             let api = ::get_api();
@@ -126,7 +135,7 @@ impl {name} {{
 
             let mut argument_buffer = [ptr::null() as *const libc::c_void; {arg_count}];
             "#, cname = class.name, name = method.name, rust_ret_type = rust_ret_type, params = params,
-                arg_count = method.arguments.len()).unwrap();
+                arg_count = method.arguments.len(), type_params = type_params).unwrap();
 
             for (idx, argument) in method.arguments.iter().enumerate() {
                 godot_handle_argument_pre(&mut output, &argument.ty, rust_safe_name(&argument.name), idx);
@@ -218,7 +227,8 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
         "String" => {
             writeln!(w, r#"
             let mut __arg_{arg} = sys::godot_string::default();
-            (api.godot_string_new_data)(&mut __arg_{arg}, {name}.as_ptr() as *const _, {name}.len() as _);
+            let mut __val_{arg} = {name}.as_ref();
+            (api.godot_string_new_data)(&mut __arg_{arg}, __val_{arg}.as_ptr() as *const _, __val_{arg}.len() as _);
             argument_buffer[{arg}] = (&__arg_{arg}) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },

@@ -134,7 +134,7 @@ class $name:ident: $parent:ty {
             $fname:ident : $fty:ty,
         )*
     }
-    properties($builder:ident) $pbody:block
+    setup($builder:ident) $pbody:block
     constructor($godot_info:ident) $construct:block
 
     $($tt:tt)*

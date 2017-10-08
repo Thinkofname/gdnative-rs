@@ -9,7 +9,7 @@ gdclass! {
             time: f32,
             rotate_speed: f64,
         }
-        properties(builder) {
+        setup(builder) {
             builder.property("base/rotate_speed", 0.05)
                 .hint(godot::PropertyHint::Range {
                     min: 0.05,
