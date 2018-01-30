@@ -19,9 +19,8 @@ impl Variant {
         unsafe {
             let api = get_api();
             let mut dest = sys::godot_variant::default();
-            let mut godot_s = sys::godot_string::default();
             let val = s.as_ref();
-            (api.godot_string_new_data)(&mut godot_s, val.as_ptr() as *const _, val.len() as _);
+            let mut godot_s = (api.godot_string_chars_to_utf8_with_len)(val.as_ptr() as *const _, val.len() as _);
             (api.godot_variant_new_string)(&mut dest, &godot_s);
             (api.godot_string_destroy)(&mut godot_s);
             Variant(dest)

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GODOT_NODE_PATH_H
 #define GODOT_NODE_PATH_H
 
@@ -45,8 +46,17 @@ typedef struct {
 } godot_node_path;
 #endif
 
+// reduce extern "C" nesting for VS2013
+#ifdef __cplusplus
+}
+#endif
+
 #include <gdnative/gdnative.h>
 #include <gdnative/string.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void GDAPI godot_node_path_new(godot_node_path *r_dest, const godot_string *p_from);
 void GDAPI godot_node_path_new_copy(godot_node_path *r_dest, const godot_node_path *p_src);
@@ -64,7 +74,7 @@ godot_int GDAPI godot_node_path_get_subname_count(const godot_node_path *p_self)
 
 godot_string GDAPI godot_node_path_get_subname(const godot_node_path *p_self, const godot_int p_idx);
 
-godot_string GDAPI godot_node_path_get_property(const godot_node_path *p_self);
+godot_string GDAPI godot_node_path_get_concatenated_subnames(const godot_node_path *p_self);
 
 godot_bool GDAPI godot_node_path_is_empty(const godot_node_path *p_self);
 

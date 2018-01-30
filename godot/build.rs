@@ -81,14 +81,19 @@ impl {name} {{
 "#, name = class.name).unwrap();
 
         if class.singleton {
+            let s_name = if class.name.starts_with("_") {
+                &class.name[1..]
+            } else {
+                class.name.as_ref()
+            };
             writeln!(output, r#"
     pub fn godot_singleton() -> GodotRef<{name}> {{
         unsafe {{
-            let obj = (get_api().godot_global_get_singleton)(b"{name}\0".as_ptr() as *mut _);
+            let obj = (get_api().godot_global_get_singleton)(b"{s_name}\0".as_ptr() as *mut _);
             GodotRef::from_raw(obj as *mut _)
         }}
     }}
-            "#, name = class.name).unwrap();
+            "#, name = class.name, s_name = s_name).unwrap();
         }
 
         'method:
@@ -223,6 +228,8 @@ fn rust_safe_name(name: &str) -> &str {
         "type" => "_type",
         "loop" => "_loop",
         "in" => "_in",
+        "override" => "_override",
+        "where" => "_where",
         name => name,
     }
 }
@@ -241,6 +248,7 @@ fn godot_type_to_rust(ty: &str) -> Option<Cow<str>> {
         "NodePath" => Some("NodePath".into()),
         "Variant" => Some("Variant".into()),
         "Array" => None, // TODO:
+        "AABB" => None, // TODO:
         "RID" => None, // TODO:
         "Rect2" => None, // TODO:
         "Rect3" => None, // TODO:
@@ -281,9 +289,8 @@ fn godot_handle_argument_pre<W: Write>(w: &mut W, ty: &str, name: &str, arg: usi
         },
         "String" => {
             writeln!(w, r#"
-            let mut __arg_{arg} = sys::godot_string::default();
             let mut __val_{arg} = {name}.as_ref();
-            (api.godot_string_new_data)(&mut __arg_{arg}, __val_{arg}.as_ptr() as *const _, __val_{arg}.len() as _);
+            let mut __arg_{arg} = (api.godot_string_chars_to_utf8_with_len)(__val_{arg}.as_ptr() as *const _, __val_{arg}.len() as _);
             argument_buffer[{arg}] = (&__arg_{arg}) as *const _ as *const _;
             "#, name = name, arg = arg).unwrap();
         },
@@ -446,7 +453,8 @@ fn godot_handle_return_post<W: Write>(w: &mut W, ty: &str) {
         }
         "String" => {
             writeln!(w, r#"
-            ::std::ffi::CStr::from_ptr((api.godot_string_c_str)(&ret) as *const _)
+            let __tmp = (api.godot_string_utf8)(&ret);
+            ::std::ffi::CStr::from_ptr((api.godot_char_string_get_data)(&__tmp) as *const _)
                 .to_string_lossy()
                 .into_owned()
             "#).unwrap();

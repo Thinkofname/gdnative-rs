@@ -124,8 +124,7 @@ impl <'a, C> SignalBuilder<'a, C> {
         unsafe {
             let api = get_api();
 
-            let mut name = sys::godot_string::default();
-            (api.godot_string_new_data)(&mut name, self.name.as_ptr() as *const _, self.name.len() as _);
+            let name = (api.godot_string_chars_to_utf8_with_len)(self.name.as_ptr() as *const _, self.name.len() as _);
             let signal = sys::godot_signal {
                 name: name,
                 num_args: 0,
@@ -194,10 +193,11 @@ impl <'a, C, S, G, T> PropertyBuilder<'a, C, S, G, T>
                 }
                 PropertyHint::NodePathToEditedNode => GODOT_PROPERTY_HINT_NODE_PATH_TO_EDITED_NODE,
             };
-            let mut hint_string = sys::godot_string::default();
-            if let Some(text) = hint_text {
-                    (api.godot_string_new_data)(&mut hint_string, text.as_ptr() as *const _, text.len() as _);
-            }
+            let hint_string = if let Some(text) = hint_text {
+                (api.godot_string_chars_to_utf8_with_len)(text.as_ptr() as *const _, text.len() as _)
+            } else {
+                sys::godot_string::default()
+            };
             let mut attr = sys::godot_property_attributes {
                 rset_type: sys::godot_method_rpc_mode::GODOT_METHOD_RPC_MODE_DISABLED, // TODO:
 

@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  rid.h                                                                */
+/*  godot_arvr.h                                                         */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,28 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef GODOT_RID_H
-#define GODOT_RID_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
-
-#define GODOT_RID_SIZE sizeof(void *)
-
-#ifndef GODOT_CORE_API_GODOT_RID_TYPE_DEFINED
-#define GODOT_CORE_API_GODOT_RID_TYPE_DEFINED
-typedef struct {
-	uint8_t _dont_touch_that[GODOT_RID_SIZE];
-} godot_rid;
-#endif
-
-// reduce extern "C" nesting for VS2013
-#ifdef __cplusplus
-}
-#endif
+#ifndef GODOT_NATIVEARVR_H
+#define GODOT_NATIVEARVR_H
 
 #include <gdnative/gdnative.h>
 
@@ -57,18 +37,44 @@ typedef struct {
 extern "C" {
 #endif
 
-void GDAPI godot_rid_new(godot_rid *r_dest);
+typedef struct {
+	void *(*constructor)(godot_object *);
+	void (*destructor)(void *);
+	godot_string (*get_name)(const void *);
+	godot_int (*get_capabilities)(const void *);
+	godot_bool (*get_anchor_detection_is_enabled)(const void *);
+	void (*set_anchor_detection_is_enabled)(void *, godot_bool);
+	godot_bool (*is_stereo)(const void *);
+	godot_bool (*is_initialized)(const void *);
+	godot_bool (*initialize)(void *);
+	void (*uninitialize)(void *);
+	godot_vector2 (*get_render_targetsize)(const void *);
+	godot_transform (*get_transform_for_eye)(void *, godot_int, godot_transform *);
+	void (*fill_projection_for_eye)(void *, godot_real *, godot_int, godot_real, godot_real, godot_real);
+	void (*commit_for_eye)(void *, godot_int, godot_rid *, godot_rect2 *);
+	void (*process)(void *);
+} godot_arvr_interface_gdnative;
 
-godot_int GDAPI godot_rid_get_id(const godot_rid *p_self);
+void GDAPI godot_arvr_register_interface(const godot_arvr_interface_gdnative *p_interface);
 
-void GDAPI godot_rid_new_with_resource(godot_rid *r_dest, const godot_object *p_from);
+// helper functions to access ARVRServer data
+godot_real GDAPI godot_arvr_get_worldscale();
+godot_transform GDAPI godot_arvr_get_reference_frame();
 
-godot_bool GDAPI godot_rid_operator_equal(const godot_rid *p_self, const godot_rid *p_b);
+// helper functions for rendering
+void GDAPI godot_arvr_blit(godot_int p_eye, godot_rid *p_render_target, godot_rect2 *p_rect);
+godot_int GDAPI godot_arvr_get_texid(godot_rid *p_render_target);
 
-godot_bool GDAPI godot_rid_operator_less(const godot_rid *p_self, const godot_rid *p_b);
+// helper functions for updating ARVR controllers
+godot_int GDAPI godot_arvr_add_controller(char *p_device_name, godot_int p_hand, godot_bool p_tracks_orientation, godot_bool p_tracks_position);
+void GDAPI godot_arvr_remove_controller(godot_int p_controller_id);
+void GDAPI godot_arvr_set_controller_transform(godot_int p_controller_id, godot_transform *p_transform, godot_bool p_tracks_orientation, godot_bool p_tracks_position);
+void GDAPI godot_arvr_set_controller_button(godot_int p_controller_id, godot_int p_button, godot_bool p_is_pressed);
+void GDAPI godot_arvr_set_controller_axis(godot_int p_controller_id, godot_int p_axis, godot_real p_value, godot_bool p_can_be_negative);
+godot_real GDAPI godot_arvr_get_controller_rumble(godot_int p_controller_id);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // GODOT_RID_H
+#endif /* !GODOT_NATIVEARVR_H */

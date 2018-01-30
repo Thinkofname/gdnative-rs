@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GODOT_QUAT_H
 #define GODOT_QUAT_H
 
@@ -45,8 +46,17 @@ typedef struct {
 } godot_quat;
 #endif
 
+// reduce extern "C" nesting for VS2013
+#ifdef __cplusplus
+}
+#endif
+
 #include <gdnative/gdnative.h>
 #include <gdnative/vector3.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void GDAPI godot_quat_new(godot_quat *r_dest, const godot_real p_x, const godot_real p_y, const godot_real p_z, const godot_real p_w);
 void GDAPI godot_quat_new_with_axis_angle(godot_quat *r_dest, const godot_vector3 *p_axis, const godot_real p_angle);
@@ -89,7 +99,7 @@ godot_quat GDAPI godot_quat_operator_multiply(const godot_quat *p_self, const go
 
 godot_quat GDAPI godot_quat_operator_add(const godot_quat *p_self, const godot_quat *p_b);
 
-godot_quat GDAPI godot_quat_operator_substract(const godot_quat *p_self, const godot_quat *p_b);
+godot_quat GDAPI godot_quat_operator_subtract(const godot_quat *p_self, const godot_quat *p_b);
 
 godot_quat GDAPI godot_quat_operator_divide(const godot_quat *p_self, const godot_real p_b);
 

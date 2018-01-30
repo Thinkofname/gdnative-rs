@@ -3,17 +3,84 @@
 #define GODOT_GDNATIVE_API_STRUCT_H
 
 #include <gdnative/gdnative.h>
+#include <arvr/godot_arvr.h>
 #include <nativescript/godot_nativescript.h>
+#include <pluginscript/godot_pluginscript.h>
 
-#define GDNATIVE_API_INIT(options) do { extern const godot_gdnative_api_struct *_gdnative_wrapper_api_struct; _gdnative_wrapper_api_struct = options->api_struct; } while (0)
+#define GDNATIVE_API_INIT(options) do {  \
+	extern const godot_gdnative_core_api_struct *_gdnative_wrapper_api_struct;  \
+	extern const godot_gdnative_ext_nativescript_api_struct *_gdnative_wrapper_nativescript_api_struct;  \
+	extern const godot_gdnative_ext_pluginscript_api_struct *_gdnative_wrapper_pluginscript_api_struct;  \
+	extern const godot_gdnative_ext_arvr_api_struct *_gdnative_wrapper_arvr_api_struct;  \
+	_gdnative_wrapper_api_struct = options->api_struct;  \
+	for (int i = 0; i < _gdnative_wrapper_api_struct->num_extensions; i++) {   \
+		switch (_gdnative_wrapper_api_struct->extensions[i]->type) {  \
+			case GDNATIVE_EXT_NATIVESCRIPT:  \
+				_gdnative_wrapper_nativescript_api_struct = (godot_gdnative_ext_nativescript_api_struct *) _gdnative_wrapper_api_struct->extensions[i];  \
+				break;  \
+			case GDNATIVE_EXT_PLUGINSCRIPT:  \
+				_gdnative_wrapper_pluginscript_api_struct = (godot_gdnative_ext_pluginscript_api_struct *) _gdnative_wrapper_api_struct->extensions[i];  \
+				break;  \
+			case GDNATIVE_EXT_ARVR:  \
+				_gdnative_wrapper_arvr_api_struct = (godot_gdnative_ext_arvr_api_struct *) _gdnative_wrapper_api_struct->extensions[i];  \
+				break;  \
+		}  \
+	}  \
+ } while (0)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct godot_gdnative_api_struct {
-	void *next;
-	const char *version;
+enum GDNATIVE_API_TYPES {
+	GDNATIVE_CORE,
+	GDNATIVE_EXT_NATIVESCRIPT,
+	GDNATIVE_EXT_PLUGINSCRIPT,
+	GDNATIVE_EXT_ARVR,
+};
+
+typedef struct godot_gdnative_ext_nativescript_api_struct {
+	unsigned int type;
+	godot_gdnative_api_version version;
+	const godot_gdnative_api_struct *next;
+	void (*godot_nativescript_register_class)(void *p_gdnative_handle, const char *p_name, const char *p_base, godot_instance_create_func p_create_func, godot_instance_destroy_func p_destroy_func);
+	void (*godot_nativescript_register_tool_class)(void *p_gdnative_handle, const char *p_name, const char *p_base, godot_instance_create_func p_create_func, godot_instance_destroy_func p_destroy_func);
+	void (*godot_nativescript_register_method)(void *p_gdnative_handle, const char *p_name, const char *p_function_name, godot_method_attributes p_attr, godot_instance_method p_method);
+	void (*godot_nativescript_register_property)(void *p_gdnative_handle, const char *p_name, const char *p_path, godot_property_attributes *p_attr, godot_property_set_func p_set_func, godot_property_get_func p_get_func);
+	void (*godot_nativescript_register_signal)(void *p_gdnative_handle, const char *p_name, const godot_signal *p_signal);
+	void *(*godot_nativescript_get_userdata)(godot_object *p_instance);
+} godot_gdnative_ext_nativescript_api_struct;
+
+typedef struct godot_gdnative_ext_pluginscript_api_struct {
+	unsigned int type;
+	godot_gdnative_api_version version;
+	const godot_gdnative_api_struct *next;
+	void (*godot_pluginscript_register_language)(const godot_pluginscript_language_desc *language_desc);
+} godot_gdnative_ext_pluginscript_api_struct;
+
+typedef struct godot_gdnative_ext_arvr_api_struct {
+	unsigned int type;
+	godot_gdnative_api_version version;
+	const godot_gdnative_api_struct *next;
+	void (*godot_arvr_register_interface)(const godot_arvr_interface_gdnative *p_interface);
+	godot_real (*godot_arvr_get_worldscale)();
+	godot_transform (*godot_arvr_get_reference_frame)();
+	void (*godot_arvr_blit)(int p_eye, godot_rid *p_render_target, godot_rect2 *p_screen_rect);
+	godot_int (*godot_arvr_get_texid)(godot_rid *p_render_target);
+	godot_int (*godot_arvr_add_controller)(char *p_device_name, godot_int p_hand, godot_bool p_tracks_orientation, godot_bool p_tracks_position);
+	void (*godot_arvr_remove_controller)(godot_int p_controller_id);
+	void (*godot_arvr_set_controller_transform)(godot_int p_controller_id, godot_transform *p_transform, godot_bool p_tracks_orientation, godot_bool p_tracks_position);
+	void (*godot_arvr_set_controller_button)(godot_int p_controller_id, godot_int p_button, godot_bool p_is_pressed);
+	void (*godot_arvr_set_controller_axis)(godot_int p_controller_id, godot_int p_exis, godot_real p_value, godot_bool p_can_be_negative);
+	godot_real (*godot_arvr_get_controller_rumble)(godot_int p_controller_id);
+} godot_gdnative_ext_arvr_api_struct;
+
+typedef struct godot_gdnative_core_api_struct {
+	unsigned int type;
+	godot_gdnative_api_version version;
+	const godot_gdnative_api_struct *next;
+	unsigned int num_extensions;
+	const godot_gdnative_api_struct **extensions;
 	void (*godot_color_new_rgba)(godot_color *r_dest, const godot_real p_r, const godot_real p_g, const godot_real p_b, const godot_real p_a);
 	void (*godot_color_new_rgb)(godot_color *r_dest, const godot_real p_r, const godot_real p_g, const godot_real p_b);
 	godot_real (*godot_color_get_r)(const godot_color *p_self);
@@ -63,7 +130,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_vector2 (*godot_vector2_abs)(const godot_vector2 *p_self);
 	godot_vector2 (*godot_vector2_clamped)(const godot_vector2 *p_self, const godot_real p_length);
 	godot_vector2 (*godot_vector2_operator_add)(const godot_vector2 *p_self, const godot_vector2 *p_b);
-	godot_vector2 (*godot_vector2_operator_substract)(const godot_vector2 *p_self, const godot_vector2 *p_b);
+	godot_vector2 (*godot_vector2_operator_subtract)(const godot_vector2 *p_self, const godot_vector2 *p_b);
 	godot_vector2 (*godot_vector2_operator_multiply_vector)(const godot_vector2 *p_self, const godot_vector2 *p_b);
 	godot_vector2 (*godot_vector2_operator_multiply_scalar)(const godot_vector2 *p_self, const godot_real p_b);
 	godot_vector2 (*godot_vector2_operator_divide_vector)(const godot_vector2 *p_self, const godot_vector2 *p_b);
@@ -98,7 +165,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_quat (*godot_quat_cubic_slerp)(const godot_quat *p_self, const godot_quat *p_b, const godot_quat *p_pre_a, const godot_quat *p_post_b, const godot_real p_t);
 	godot_quat (*godot_quat_operator_multiply)(const godot_quat *p_self, const godot_real p_b);
 	godot_quat (*godot_quat_operator_add)(const godot_quat *p_self, const godot_quat *p_b);
-	godot_quat (*godot_quat_operator_substract)(const godot_quat *p_self, const godot_quat *p_b);
+	godot_quat (*godot_quat_operator_subtract)(const godot_quat *p_self, const godot_quat *p_b);
 	godot_quat (*godot_quat_operator_divide)(const godot_quat *p_self, const godot_real p_b);
 	godot_bool (*godot_quat_operator_equal)(const godot_quat *p_self, const godot_quat *p_b);
 	godot_quat (*godot_quat_operator_neg)(const godot_quat *p_self);
@@ -122,14 +189,14 @@ typedef struct godot_gdnative_api_struct {
 	godot_int (*godot_basis_get_orthogonal_index)(const godot_basis *p_self);
 	void (*godot_basis_new)(godot_basis *r_dest);
 	void (*godot_basis_new_with_euler_quat)(godot_basis *r_dest, const godot_quat *p_euler);
-	void (*godot_basis_get_elements)(godot_basis *p_self, godot_vector3 *p_elements);
+	void (*godot_basis_get_elements)(const godot_basis *p_self, godot_vector3 *p_elements);
 	godot_vector3 (*godot_basis_get_axis)(const godot_basis *p_self, const godot_int p_axis);
 	void (*godot_basis_set_axis)(godot_basis *p_self, const godot_int p_axis, const godot_vector3 *p_value);
 	godot_vector3 (*godot_basis_get_row)(const godot_basis *p_self, const godot_int p_row);
 	void (*godot_basis_set_row)(godot_basis *p_self, const godot_int p_row, const godot_vector3 *p_value);
 	godot_bool (*godot_basis_operator_equal)(const godot_basis *p_self, const godot_basis *p_b);
 	godot_basis (*godot_basis_operator_add)(const godot_basis *p_self, const godot_basis *p_b);
-	godot_basis (*godot_basis_operator_substract)(const godot_basis *p_self, const godot_basis *p_b);
+	godot_basis (*godot_basis_operator_subtract)(const godot_basis *p_self, const godot_basis *p_b);
 	godot_basis (*godot_basis_operator_multiply_vector)(const godot_basis *p_self, const godot_basis *p_b);
 	godot_basis (*godot_basis_operator_multiply_scalar)(const godot_basis *p_self, const godot_real p_b);
 	void (*godot_vector3_new)(godot_vector3 *r_dest, const godot_real p_x, const godot_real p_y, const godot_real p_z);
@@ -159,7 +226,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_vector3 (*godot_vector3_bounce)(const godot_vector3 *p_self, const godot_vector3 *p_n);
 	godot_vector3 (*godot_vector3_reflect)(const godot_vector3 *p_self, const godot_vector3 *p_n);
 	godot_vector3 (*godot_vector3_operator_add)(const godot_vector3 *p_self, const godot_vector3 *p_b);
-	godot_vector3 (*godot_vector3_operator_substract)(const godot_vector3 *p_self, const godot_vector3 *p_b);
+	godot_vector3 (*godot_vector3_operator_subtract)(const godot_vector3 *p_self, const godot_vector3 *p_b);
 	godot_vector3 (*godot_vector3_operator_multiply_vector)(const godot_vector3 *p_self, const godot_vector3 *p_b);
 	godot_vector3 (*godot_vector3_operator_multiply_scalar)(const godot_vector3 *p_self, const godot_real p_b);
 	godot_vector3 (*godot_vector3_operator_divide_vector)(const godot_vector3 *p_self, const godot_vector3 *p_b);
@@ -179,6 +246,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_byte_array_push_back)(godot_pool_byte_array *p_self, const uint8_t p_data);
 	void (*godot_pool_byte_array_remove)(godot_pool_byte_array *p_self, const godot_int p_idx);
 	void (*godot_pool_byte_array_resize)(godot_pool_byte_array *p_self, const godot_int p_size);
+	godot_pool_byte_array_read_access *(*godot_pool_byte_array_read)(const godot_pool_byte_array *p_self);
+	godot_pool_byte_array_write_access *(*godot_pool_byte_array_write)(godot_pool_byte_array *p_self);
 	void (*godot_pool_byte_array_set)(godot_pool_byte_array *p_self, const godot_int p_idx, const uint8_t p_data);
 	uint8_t (*godot_pool_byte_array_get)(const godot_pool_byte_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_byte_array_size)(const godot_pool_byte_array *p_self);
@@ -193,6 +262,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_int_array_push_back)(godot_pool_int_array *p_self, const godot_int p_data);
 	void (*godot_pool_int_array_remove)(godot_pool_int_array *p_self, const godot_int p_idx);
 	void (*godot_pool_int_array_resize)(godot_pool_int_array *p_self, const godot_int p_size);
+	godot_pool_int_array_read_access *(*godot_pool_int_array_read)(const godot_pool_int_array *p_self);
+	godot_pool_int_array_write_access *(*godot_pool_int_array_write)(godot_pool_int_array *p_self);
 	void (*godot_pool_int_array_set)(godot_pool_int_array *p_self, const godot_int p_idx, const godot_int p_data);
 	godot_int (*godot_pool_int_array_get)(const godot_pool_int_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_int_array_size)(const godot_pool_int_array *p_self);
@@ -207,6 +278,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_real_array_push_back)(godot_pool_real_array *p_self, const godot_real p_data);
 	void (*godot_pool_real_array_remove)(godot_pool_real_array *p_self, const godot_int p_idx);
 	void (*godot_pool_real_array_resize)(godot_pool_real_array *p_self, const godot_int p_size);
+	godot_pool_real_array_read_access *(*godot_pool_real_array_read)(const godot_pool_real_array *p_self);
+	godot_pool_real_array_write_access *(*godot_pool_real_array_write)(godot_pool_real_array *p_self);
 	void (*godot_pool_real_array_set)(godot_pool_real_array *p_self, const godot_int p_idx, const godot_real p_data);
 	godot_real (*godot_pool_real_array_get)(const godot_pool_real_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_real_array_size)(const godot_pool_real_array *p_self);
@@ -221,6 +294,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_string_array_push_back)(godot_pool_string_array *p_self, const godot_string *p_data);
 	void (*godot_pool_string_array_remove)(godot_pool_string_array *p_self, const godot_int p_idx);
 	void (*godot_pool_string_array_resize)(godot_pool_string_array *p_self, const godot_int p_size);
+	godot_pool_string_array_read_access *(*godot_pool_string_array_read)(const godot_pool_string_array *p_self);
+	godot_pool_string_array_write_access *(*godot_pool_string_array_write)(godot_pool_string_array *p_self);
 	void (*godot_pool_string_array_set)(godot_pool_string_array *p_self, const godot_int p_idx, const godot_string *p_data);
 	godot_string (*godot_pool_string_array_get)(const godot_pool_string_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_string_array_size)(const godot_pool_string_array *p_self);
@@ -235,6 +310,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_vector2_array_push_back)(godot_pool_vector2_array *p_self, const godot_vector2 *p_data);
 	void (*godot_pool_vector2_array_remove)(godot_pool_vector2_array *p_self, const godot_int p_idx);
 	void (*godot_pool_vector2_array_resize)(godot_pool_vector2_array *p_self, const godot_int p_size);
+	godot_pool_vector2_array_read_access *(*godot_pool_vector2_array_read)(const godot_pool_vector2_array *p_self);
+	godot_pool_vector2_array_write_access *(*godot_pool_vector2_array_write)(godot_pool_vector2_array *p_self);
 	void (*godot_pool_vector2_array_set)(godot_pool_vector2_array *p_self, const godot_int p_idx, const godot_vector2 *p_data);
 	godot_vector2 (*godot_pool_vector2_array_get)(const godot_pool_vector2_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_vector2_array_size)(const godot_pool_vector2_array *p_self);
@@ -249,6 +326,8 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_vector3_array_push_back)(godot_pool_vector3_array *p_self, const godot_vector3 *p_data);
 	void (*godot_pool_vector3_array_remove)(godot_pool_vector3_array *p_self, const godot_int p_idx);
 	void (*godot_pool_vector3_array_resize)(godot_pool_vector3_array *p_self, const godot_int p_size);
+	godot_pool_vector3_array_read_access *(*godot_pool_vector3_array_read)(const godot_pool_vector3_array *p_self);
+	godot_pool_vector3_array_write_access *(*godot_pool_vector3_array_write)(godot_pool_vector3_array *p_self);
 	void (*godot_pool_vector3_array_set)(godot_pool_vector3_array *p_self, const godot_int p_idx, const godot_vector3 *p_data);
 	godot_vector3 (*godot_pool_vector3_array_get)(const godot_pool_vector3_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_vector3_array_size)(const godot_pool_vector3_array *p_self);
@@ -263,10 +342,68 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_pool_color_array_push_back)(godot_pool_color_array *p_self, const godot_color *p_data);
 	void (*godot_pool_color_array_remove)(godot_pool_color_array *p_self, const godot_int p_idx);
 	void (*godot_pool_color_array_resize)(godot_pool_color_array *p_self, const godot_int p_size);
+	godot_pool_color_array_read_access *(*godot_pool_color_array_read)(const godot_pool_color_array *p_self);
+	godot_pool_color_array_write_access *(*godot_pool_color_array_write)(godot_pool_color_array *p_self);
 	void (*godot_pool_color_array_set)(godot_pool_color_array *p_self, const godot_int p_idx, const godot_color *p_data);
 	godot_color (*godot_pool_color_array_get)(const godot_pool_color_array *p_self, const godot_int p_idx);
 	godot_int (*godot_pool_color_array_size)(const godot_pool_color_array *p_self);
 	void (*godot_pool_color_array_destroy)(godot_pool_color_array *p_self);
+	godot_pool_byte_array_read_access *(*godot_pool_byte_array_read_access_copy)(const godot_pool_byte_array_read_access *p_read);
+	const uint8_t *(*godot_pool_byte_array_read_access_ptr)(const godot_pool_byte_array_read_access *p_read);
+	void (*godot_pool_byte_array_read_access_operator_assign)(godot_pool_byte_array_read_access *p_read, godot_pool_byte_array_read_access *p_other);
+	void (*godot_pool_byte_array_read_access_destroy)(godot_pool_byte_array_read_access *p_read);
+	godot_pool_int_array_read_access *(*godot_pool_int_array_read_access_copy)(const godot_pool_int_array_read_access *p_read);
+	const godot_int *(*godot_pool_int_array_read_access_ptr)(const godot_pool_int_array_read_access *p_read);
+	void (*godot_pool_int_array_read_access_operator_assign)(godot_pool_int_array_read_access *p_read, godot_pool_int_array_read_access *p_other);
+	void (*godot_pool_int_array_read_access_destroy)(godot_pool_int_array_read_access *p_read);
+	godot_pool_real_array_read_access *(*godot_pool_real_array_read_access_copy)(const godot_pool_real_array_read_access *p_read);
+	const godot_real *(*godot_pool_real_array_read_access_ptr)(const godot_pool_real_array_read_access *p_read);
+	void (*godot_pool_real_array_read_access_operator_assign)(godot_pool_real_array_read_access *p_read, godot_pool_real_array_read_access *p_other);
+	void (*godot_pool_real_array_read_access_destroy)(godot_pool_real_array_read_access *p_read);
+	godot_pool_string_array_read_access *(*godot_pool_string_array_read_access_copy)(const godot_pool_string_array_read_access *p_read);
+	const godot_string *(*godot_pool_string_array_read_access_ptr)(const godot_pool_string_array_read_access *p_read);
+	void (*godot_pool_string_array_read_access_operator_assign)(godot_pool_string_array_read_access *p_read, godot_pool_string_array_read_access *p_other);
+	void (*godot_pool_string_array_read_access_destroy)(godot_pool_string_array_read_access *p_read);
+	godot_pool_vector2_array_read_access *(*godot_pool_vector2_array_read_access_copy)(const godot_pool_vector2_array_read_access *p_read);
+	const godot_vector2 *(*godot_pool_vector2_array_read_access_ptr)(const godot_pool_vector2_array_read_access *p_read);
+	void (*godot_pool_vector2_array_read_access_operator_assign)(godot_pool_vector2_array_read_access *p_read, godot_pool_vector2_array_read_access *p_other);
+	void (*godot_pool_vector2_array_read_access_destroy)(godot_pool_vector2_array_read_access *p_read);
+	godot_pool_vector3_array_read_access *(*godot_pool_vector3_array_read_access_copy)(const godot_pool_vector3_array_read_access *p_read);
+	const godot_vector3 *(*godot_pool_vector3_array_read_access_ptr)(const godot_pool_vector3_array_read_access *p_read);
+	void (*godot_pool_vector3_array_read_access_operator_assign)(godot_pool_vector3_array_read_access *p_read, godot_pool_vector3_array_read_access *p_other);
+	void (*godot_pool_vector3_array_read_access_destroy)(godot_pool_vector3_array_read_access *p_read);
+	godot_pool_color_array_read_access *(*godot_pool_color_array_read_access_copy)(const godot_pool_color_array_read_access *p_read);
+	const godot_color *(*godot_pool_color_array_read_access_ptr)(const godot_pool_color_array_read_access *p_read);
+	void (*godot_pool_color_array_read_access_operator_assign)(godot_pool_color_array_read_access *p_read, godot_pool_color_array_read_access *p_other);
+	void (*godot_pool_color_array_read_access_destroy)(godot_pool_color_array_read_access *p_read);
+	godot_pool_byte_array_write_access *(*godot_pool_byte_array_write_access_copy)(const godot_pool_byte_array_write_access *p_write);
+	uint8_t *(*godot_pool_byte_array_write_access_ptr)(const godot_pool_byte_array_write_access *p_write);
+	void (*godot_pool_byte_array_write_access_operator_assign)(godot_pool_byte_array_write_access *p_write, godot_pool_byte_array_write_access *p_other);
+	void (*godot_pool_byte_array_write_access_destroy)(godot_pool_byte_array_write_access *p_write);
+	godot_pool_int_array_write_access *(*godot_pool_int_array_write_access_copy)(const godot_pool_int_array_write_access *p_write);
+	godot_int *(*godot_pool_int_array_write_access_ptr)(const godot_pool_int_array_write_access *p_write);
+	void (*godot_pool_int_array_write_access_operator_assign)(godot_pool_int_array_write_access *p_write, godot_pool_int_array_write_access *p_other);
+	void (*godot_pool_int_array_write_access_destroy)(godot_pool_int_array_write_access *p_write);
+	godot_pool_real_array_write_access *(*godot_pool_real_array_write_access_copy)(const godot_pool_real_array_write_access *p_write);
+	godot_real *(*godot_pool_real_array_write_access_ptr)(const godot_pool_real_array_write_access *p_write);
+	void (*godot_pool_real_array_write_access_operator_assign)(godot_pool_real_array_write_access *p_write, godot_pool_real_array_write_access *p_other);
+	void (*godot_pool_real_array_write_access_destroy)(godot_pool_real_array_write_access *p_write);
+	godot_pool_string_array_write_access *(*godot_pool_string_array_write_access_copy)(const godot_pool_string_array_write_access *p_write);
+	godot_string *(*godot_pool_string_array_write_access_ptr)(const godot_pool_string_array_write_access *p_write);
+	void (*godot_pool_string_array_write_access_operator_assign)(godot_pool_string_array_write_access *p_write, godot_pool_string_array_write_access *p_other);
+	void (*godot_pool_string_array_write_access_destroy)(godot_pool_string_array_write_access *p_write);
+	godot_pool_vector2_array_write_access *(*godot_pool_vector2_array_write_access_copy)(const godot_pool_vector2_array_write_access *p_write);
+	godot_vector2 *(*godot_pool_vector2_array_write_access_ptr)(const godot_pool_vector2_array_write_access *p_write);
+	void (*godot_pool_vector2_array_write_access_operator_assign)(godot_pool_vector2_array_write_access *p_write, godot_pool_vector2_array_write_access *p_other);
+	void (*godot_pool_vector2_array_write_access_destroy)(godot_pool_vector2_array_write_access *p_write);
+	godot_pool_vector3_array_write_access *(*godot_pool_vector3_array_write_access_copy)(const godot_pool_vector3_array_write_access *p_write);
+	godot_vector3 *(*godot_pool_vector3_array_write_access_ptr)(const godot_pool_vector3_array_write_access *p_write);
+	void (*godot_pool_vector3_array_write_access_operator_assign)(godot_pool_vector3_array_write_access *p_write, godot_pool_vector3_array_write_access *p_other);
+	void (*godot_pool_vector3_array_write_access_destroy)(godot_pool_vector3_array_write_access *p_write);
+	godot_pool_color_array_write_access *(*godot_pool_color_array_write_access_copy)(const godot_pool_color_array_write_access *p_write);
+	godot_color *(*godot_pool_color_array_write_access_ptr)(const godot_pool_color_array_write_access *p_write);
+	void (*godot_pool_color_array_write_access_operator_assign)(godot_pool_color_array_write_access *p_write, godot_pool_color_array_write_access *p_other);
+	void (*godot_pool_color_array_write_access_destroy)(godot_pool_color_array_write_access *p_write);
 	void (*godot_array_new)(godot_array *r_dest);
 	void (*godot_array_new_copy)(godot_array *r_dest, const godot_array *p_src);
 	void (*godot_array_new_pool_color_array)(godot_array *r_dest, const godot_pool_color_array *p_pca);
@@ -279,6 +416,7 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_array_set)(godot_array *p_self, const godot_int p_idx, const godot_variant *p_value);
 	godot_variant (*godot_array_get)(const godot_array *p_self, const godot_int p_idx);
 	godot_variant *(*godot_array_operator_index)(godot_array *p_self, const godot_int p_idx);
+	const godot_variant *(*godot_array_operator_index_const)(const godot_array *p_self, const godot_int p_idx);
 	void (*godot_array_append)(godot_array *p_self, const godot_variant *p_value);
 	void (*godot_array_clear)(godot_array *p_self);
 	godot_int (*godot_array_count)(const godot_array *p_self, const godot_variant *p_value);
@@ -302,6 +440,8 @@ typedef struct godot_gdnative_api_struct {
 	godot_int (*godot_array_size)(const godot_array *p_self);
 	void (*godot_array_sort)(godot_array *p_self);
 	void (*godot_array_sort_custom)(godot_array *p_self, godot_object *p_obj, const godot_string *p_func);
+	godot_int (*godot_array_bsearch)(godot_array *p_self, const godot_variant *p_value, const godot_bool p_before);
+	godot_int (*godot_array_bsearch_custom)(godot_array *p_self, const godot_variant *p_value, godot_object *p_obj, const godot_string *p_func, const godot_bool p_before);
 	void (*godot_array_destroy)(godot_array *p_self);
 	void (*godot_dictionary_new)(godot_dictionary *r_dest);
 	void (*godot_dictionary_new_copy)(godot_dictionary *r_dest, const godot_dictionary *p_src);
@@ -318,6 +458,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_variant (*godot_dictionary_get)(const godot_dictionary *p_self, const godot_variant *p_key);
 	void (*godot_dictionary_set)(godot_dictionary *p_self, const godot_variant *p_key, const godot_variant *p_value);
 	godot_variant *(*godot_dictionary_operator_index)(godot_dictionary *p_self, const godot_variant *p_key);
+	const godot_variant *(*godot_dictionary_operator_index_const)(const godot_dictionary *p_self, const godot_variant *p_key);
 	godot_variant *(*godot_dictionary_next)(const godot_dictionary *p_self, const godot_variant *p_key);
 	godot_bool (*godot_dictionary_operator_equal)(const godot_dictionary *p_self, const godot_dictionary *p_b);
 	godot_string (*godot_dictionary_to_json)(const godot_dictionary *p_self);
@@ -330,7 +471,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_string (*godot_node_path_get_name)(const godot_node_path *p_self, const godot_int p_idx);
 	godot_int (*godot_node_path_get_subname_count)(const godot_node_path *p_self);
 	godot_string (*godot_node_path_get_subname)(const godot_node_path *p_self, const godot_int p_idx);
-	godot_string (*godot_node_path_get_property)(const godot_node_path *p_self);
+	godot_string (*godot_node_path_get_concatenated_subnames)(const godot_node_path *p_self);
 	godot_bool (*godot_node_path_is_empty)(const godot_node_path *p_self);
 	godot_bool (*godot_node_path_operator_equal)(const godot_node_path *p_self, const godot_node_path *p_b);
 	void (*godot_plane_new_with_reals)(godot_plane *r_dest, const godot_real p_a, const godot_real p_b, const godot_real p_c, const godot_real p_d);
@@ -370,33 +511,33 @@ typedef struct godot_gdnative_api_struct {
 	godot_vector2 (*godot_rect2_get_size)(const godot_rect2 *p_self);
 	void (*godot_rect2_set_position)(godot_rect2 *p_self, const godot_vector2 *p_pos);
 	void (*godot_rect2_set_size)(godot_rect2 *p_self, const godot_vector2 *p_size);
-	void (*godot_rect3_new)(godot_rect3 *r_dest, const godot_vector3 *p_pos, const godot_vector3 *p_size);
-	godot_vector3 (*godot_rect3_get_position)(const godot_rect3 *p_self);
-	void (*godot_rect3_set_position)(const godot_rect3 *p_self, const godot_vector3 *p_v);
-	godot_vector3 (*godot_rect3_get_size)(const godot_rect3 *p_self);
-	void (*godot_rect3_set_size)(const godot_rect3 *p_self, const godot_vector3 *p_v);
-	godot_string (*godot_rect3_as_string)(const godot_rect3 *p_self);
-	godot_real (*godot_rect3_get_area)(const godot_rect3 *p_self);
-	godot_bool (*godot_rect3_has_no_area)(const godot_rect3 *p_self);
-	godot_bool (*godot_rect3_has_no_surface)(const godot_rect3 *p_self);
-	godot_bool (*godot_rect3_intersects)(const godot_rect3 *p_self, const godot_rect3 *p_with);
-	godot_bool (*godot_rect3_encloses)(const godot_rect3 *p_self, const godot_rect3 *p_with);
-	godot_rect3 (*godot_rect3_merge)(const godot_rect3 *p_self, const godot_rect3 *p_with);
-	godot_rect3 (*godot_rect3_intersection)(const godot_rect3 *p_self, const godot_rect3 *p_with);
-	godot_bool (*godot_rect3_intersects_plane)(const godot_rect3 *p_self, const godot_plane *p_plane);
-	godot_bool (*godot_rect3_intersects_segment)(const godot_rect3 *p_self, const godot_vector3 *p_from, const godot_vector3 *p_to);
-	godot_bool (*godot_rect3_has_point)(const godot_rect3 *p_self, const godot_vector3 *p_point);
-	godot_vector3 (*godot_rect3_get_support)(const godot_rect3 *p_self, const godot_vector3 *p_dir);
-	godot_vector3 (*godot_rect3_get_longest_axis)(const godot_rect3 *p_self);
-	godot_int (*godot_rect3_get_longest_axis_index)(const godot_rect3 *p_self);
-	godot_real (*godot_rect3_get_longest_axis_size)(const godot_rect3 *p_self);
-	godot_vector3 (*godot_rect3_get_shortest_axis)(const godot_rect3 *p_self);
-	godot_int (*godot_rect3_get_shortest_axis_index)(const godot_rect3 *p_self);
-	godot_real (*godot_rect3_get_shortest_axis_size)(const godot_rect3 *p_self);
-	godot_rect3 (*godot_rect3_expand)(const godot_rect3 *p_self, const godot_vector3 *p_to_point);
-	godot_rect3 (*godot_rect3_grow)(const godot_rect3 *p_self, const godot_real p_by);
-	godot_vector3 (*godot_rect3_get_endpoint)(const godot_rect3 *p_self, const godot_int p_idx);
-	godot_bool (*godot_rect3_operator_equal)(const godot_rect3 *p_self, const godot_rect3 *p_b);
+	void (*godot_aabb_new)(godot_aabb *r_dest, const godot_vector3 *p_pos, const godot_vector3 *p_size);
+	godot_vector3 (*godot_aabb_get_position)(const godot_aabb *p_self);
+	void (*godot_aabb_set_position)(const godot_aabb *p_self, const godot_vector3 *p_v);
+	godot_vector3 (*godot_aabb_get_size)(const godot_aabb *p_self);
+	void (*godot_aabb_set_size)(const godot_aabb *p_self, const godot_vector3 *p_v);
+	godot_string (*godot_aabb_as_string)(const godot_aabb *p_self);
+	godot_real (*godot_aabb_get_area)(const godot_aabb *p_self);
+	godot_bool (*godot_aabb_has_no_area)(const godot_aabb *p_self);
+	godot_bool (*godot_aabb_has_no_surface)(const godot_aabb *p_self);
+	godot_bool (*godot_aabb_intersects)(const godot_aabb *p_self, const godot_aabb *p_with);
+	godot_bool (*godot_aabb_encloses)(const godot_aabb *p_self, const godot_aabb *p_with);
+	godot_aabb (*godot_aabb_merge)(const godot_aabb *p_self, const godot_aabb *p_with);
+	godot_aabb (*godot_aabb_intersection)(const godot_aabb *p_self, const godot_aabb *p_with);
+	godot_bool (*godot_aabb_intersects_plane)(const godot_aabb *p_self, const godot_plane *p_plane);
+	godot_bool (*godot_aabb_intersects_segment)(const godot_aabb *p_self, const godot_vector3 *p_from, const godot_vector3 *p_to);
+	godot_bool (*godot_aabb_has_point)(const godot_aabb *p_self, const godot_vector3 *p_point);
+	godot_vector3 (*godot_aabb_get_support)(const godot_aabb *p_self, const godot_vector3 *p_dir);
+	godot_vector3 (*godot_aabb_get_longest_axis)(const godot_aabb *p_self);
+	godot_int (*godot_aabb_get_longest_axis_index)(const godot_aabb *p_self);
+	godot_real (*godot_aabb_get_longest_axis_size)(const godot_aabb *p_self);
+	godot_vector3 (*godot_aabb_get_shortest_axis)(const godot_aabb *p_self);
+	godot_int (*godot_aabb_get_shortest_axis_index)(const godot_aabb *p_self);
+	godot_real (*godot_aabb_get_shortest_axis_size)(const godot_aabb *p_self);
+	godot_aabb (*godot_aabb_expand)(const godot_aabb *p_self, const godot_vector3 *p_to_point);
+	godot_aabb (*godot_aabb_grow)(const godot_aabb *p_self, const godot_real p_by);
+	godot_vector3 (*godot_aabb_get_endpoint)(const godot_aabb *p_self, const godot_int p_idx);
+	godot_bool (*godot_aabb_operator_equal)(const godot_aabb *p_self, const godot_aabb *p_b);
 	void (*godot_rid_new)(godot_rid *r_dest);
 	godot_int (*godot_rid_get_id)(const godot_rid *p_self);
 	void (*godot_rid_new_with_resource)(godot_rid *r_dest, const godot_object *p_from);
@@ -405,9 +546,9 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_transform_new_with_axis_origin)(godot_transform *r_dest, const godot_vector3 *p_x_axis, const godot_vector3 *p_y_axis, const godot_vector3 *p_z_axis, const godot_vector3 *p_origin);
 	void (*godot_transform_new)(godot_transform *r_dest, const godot_basis *p_basis, const godot_vector3 *p_origin);
 	godot_basis (*godot_transform_get_basis)(const godot_transform *p_self);
-	void (*godot_transform_set_basis)(godot_transform *p_self, godot_basis *p_v);
+	void (*godot_transform_set_basis)(godot_transform *p_self, const godot_basis *p_v);
 	godot_vector3 (*godot_transform_get_origin)(const godot_transform *p_self);
-	void (*godot_transform_set_origin)(godot_transform *p_self, godot_vector3 *p_v);
+	void (*godot_transform_set_origin)(godot_transform *p_self, const godot_vector3 *p_v);
 	godot_string (*godot_transform_as_string)(const godot_transform *p_self);
 	godot_transform (*godot_transform_inverse)(const godot_transform *p_self);
 	godot_transform (*godot_transform_affine_inverse)(const godot_transform *p_self);
@@ -423,8 +564,8 @@ typedef struct godot_gdnative_api_struct {
 	godot_transform (*godot_transform_operator_multiply)(const godot_transform *p_self, const godot_transform *p_b);
 	godot_vector3 (*godot_transform_xform_vector3)(const godot_transform *p_self, const godot_vector3 *p_v);
 	godot_vector3 (*godot_transform_xform_inv_vector3)(const godot_transform *p_self, const godot_vector3 *p_v);
-	godot_rect3 (*godot_transform_xform_rect3)(const godot_transform *p_self, const godot_rect3 *p_v);
-	godot_rect3 (*godot_transform_xform_inv_rect3)(const godot_transform *p_self, const godot_rect3 *p_v);
+	godot_aabb (*godot_transform_xform_aabb)(const godot_transform *p_self, const godot_aabb *p_v);
+	godot_aabb (*godot_transform_xform_inv_aabb)(const godot_transform *p_self, const godot_aabb *p_v);
 	void (*godot_transform2d_new)(godot_transform2d *r_dest, const godot_real p_rot, const godot_vector2 *p_pos);
 	void (*godot_transform2d_new_axis_origin)(godot_transform2d *r_dest, const godot_vector2 *p_x_axis, const godot_vector2 *p_y_axis, const godot_vector2 *p_origin);
 	godot_string (*godot_transform2d_as_string)(const godot_transform2d *p_self);
@@ -461,7 +602,7 @@ typedef struct godot_gdnative_api_struct {
 	void (*godot_variant_new_transform2d)(godot_variant *r_dest, const godot_transform2d *p_t2d);
 	void (*godot_variant_new_plane)(godot_variant *r_dest, const godot_plane *p_plane);
 	void (*godot_variant_new_quat)(godot_variant *r_dest, const godot_quat *p_quat);
-	void (*godot_variant_new_rect3)(godot_variant *r_dest, const godot_rect3 *p_rect3);
+	void (*godot_variant_new_aabb)(godot_variant *r_dest, const godot_aabb *p_aabb);
 	void (*godot_variant_new_basis)(godot_variant *r_dest, const godot_basis *p_basis);
 	void (*godot_variant_new_transform)(godot_variant *r_dest, const godot_transform *p_trans);
 	void (*godot_variant_new_color)(godot_variant *r_dest, const godot_color *p_color);
@@ -488,7 +629,7 @@ typedef struct godot_gdnative_api_struct {
 	godot_transform2d (*godot_variant_as_transform2d)(const godot_variant *p_self);
 	godot_plane (*godot_variant_as_plane)(const godot_variant *p_self);
 	godot_quat (*godot_variant_as_quat)(const godot_variant *p_self);
-	godot_rect3 (*godot_variant_as_rect3)(const godot_variant *p_self);
+	godot_aabb (*godot_variant_as_aabb)(const godot_variant *p_self);
 	godot_basis (*godot_variant_as_basis)(const godot_variant *p_self);
 	godot_transform (*godot_variant_as_transform)(const godot_variant *p_self);
 	godot_color (*godot_variant_as_color)(const godot_variant *p_self);
@@ -511,18 +652,22 @@ typedef struct godot_gdnative_api_struct {
 	godot_bool (*godot_variant_hash_compare)(const godot_variant *p_self, const godot_variant *p_other);
 	godot_bool (*godot_variant_booleanize)(const godot_variant *p_self);
 	void (*godot_variant_destroy)(godot_variant *p_self);
+	godot_int (*godot_char_string_length)(const godot_char_string *p_cs);
+	const char *(*godot_char_string_get_data)(const godot_char_string *p_cs);
+	void (*godot_char_string_destroy)(godot_char_string *p_cs);
 	void (*godot_string_new)(godot_string *r_dest);
 	void (*godot_string_new_copy)(godot_string *r_dest, const godot_string *p_src);
-	void (*godot_string_new_data)(godot_string *r_dest, const char *p_contents, const int p_size);
-	void (*godot_string_new_unicode_data)(godot_string *r_dest, const wchar_t *p_contents, const int p_size);
-	void (*godot_string_get_data)(const godot_string *p_self, char *p_dest, int *p_size);
+	void (*godot_string_new_with_wide_string)(godot_string *r_dest, const wchar_t *p_contents, const int p_size);
 	wchar_t *(*godot_string_operator_index)(godot_string *p_self, const godot_int p_idx);
-	const char *(*godot_string_c_str)(const godot_string *p_self);
-	const wchar_t *(*godot_string_unicode_str)(const godot_string *p_self);
+	wchar_t (*godot_string_operator_index_const)(const godot_string *p_self, const godot_int p_idx);
+	const wchar_t *(*godot_string_wide_str)(const godot_string *p_self);
 	godot_bool (*godot_string_operator_equal)(const godot_string *p_self, const godot_string *p_b);
 	godot_bool (*godot_string_operator_less)(const godot_string *p_self, const godot_string *p_b);
 	godot_string (*godot_string_operator_plus)(const godot_string *p_self, const godot_string *p_b);
 	godot_int (*godot_string_length)(const godot_string *p_self);
+	signed char (*godot_string_casecmp_to)(const godot_string *p_self, const godot_string *p_str);
+	signed char (*godot_string_nocasecmp_to)(const godot_string *p_self, const godot_string *p_str);
+	signed char (*godot_string_naturalnocasecmp_to)(const godot_string *p_self, const godot_string *p_str);
 	godot_bool (*godot_string_begins_with)(const godot_string *p_self, const godot_string *p_string);
 	godot_bool (*godot_string_begins_with_char_array)(const godot_string *p_self, const char *p_char_array);
 	godot_array (*godot_string_bigrams)(const godot_string *p_self);
@@ -612,9 +757,9 @@ typedef struct godot_gdnative_api_struct {
 	godot_string (*godot_string_strip_edges)(const godot_string *p_self, godot_bool p_left, godot_bool p_right);
 	godot_string (*godot_string_strip_escapes)(const godot_string *p_self);
 	void (*godot_string_erase)(godot_string *p_self, godot_int p_pos, godot_int p_chars);
-	void (*godot_string_ascii)(godot_string *p_self, char *result);
-	void (*godot_string_ascii_extended)(godot_string *p_self, char *result);
-	void (*godot_string_utf8)(godot_string *p_self, char *result);
+	godot_char_string (*godot_string_ascii)(const godot_string *p_self);
+	godot_char_string (*godot_string_ascii_extended)(const godot_string *p_self);
+	godot_char_string (*godot_string_utf8)(const godot_string *p_self);
 	godot_bool (*godot_string_parse_utf8)(godot_string *p_self, const char *p_utf8);
 	godot_bool (*godot_string_parse_utf8_with_len)(godot_string *p_self, const char *p_utf8, godot_int p_len);
 	godot_string (*godot_string_chars_to_utf8)(const char *p_utf8);
@@ -658,25 +803,29 @@ typedef struct godot_gdnative_api_struct {
 	godot_bool (*godot_string_is_valid_integer)(const godot_string *p_self);
 	godot_bool (*godot_string_is_valid_ip_address)(const godot_string *p_self);
 	void (*godot_string_destroy)(godot_string *p_self);
+	void (*godot_string_name_new)(godot_string_name *r_dest, const godot_string *p_name);
+	void (*godot_string_name_new_data)(godot_string_name *r_dest, const char *p_name);
+	godot_string (*godot_string_name_get_name)(const godot_string_name *p_self);
+	uint32_t (*godot_string_name_get_hash)(const godot_string_name *p_self);
+	const void *(*godot_string_name_get_data_unique_pointer)(const godot_string_name *p_self);
+	godot_bool (*godot_string_name_operator_equal)(const godot_string_name *p_self, const godot_string_name *p_other);
+	godot_bool (*godot_string_name_operator_less)(const godot_string_name *p_self, const godot_string_name *p_other);
+	void (*godot_string_name_destroy)(godot_string_name *p_self);
 	void (*godot_object_destroy)(godot_object *p_o);
 	godot_object *(*godot_global_get_singleton)(char *p_name);
 	godot_method_bind *(*godot_method_bind_get_method)(const char *p_classname, const char *p_methodname);
 	void (*godot_method_bind_ptrcall)(godot_method_bind *p_method_bind, godot_object *p_instance, const void **p_args, void *p_ret);
 	godot_variant (*godot_method_bind_call)(godot_method_bind *p_method_bind, godot_object *p_instance, const godot_variant **p_args, const int p_arg_count, godot_variant_call_error *p_call_error);
 	godot_class_constructor (*godot_get_class_constructor)(const char *p_classname);
+	godot_dictionary (*godot_get_global_constants)();
+	void (*godot_register_native_call_type)(const char *call_type, native_call_cb p_callback);
 	void *(*godot_alloc)(int p_bytes);
 	void *(*godot_realloc)(void *p_ptr, int p_bytes);
 	void (*godot_free)(void *p_ptr);
 	void (*godot_print_error)(const char *p_description, const char *p_function, const char *p_file, int p_line);
 	void (*godot_print_warning)(const char *p_description, const char *p_function, const char *p_file, int p_line);
 	void (*godot_print)(const godot_string *p_message);
-	void (*godot_nativescript_register_class)(void *p_gdnative_handle, const char *p_name, const char *p_base, godot_instance_create_func p_create_func, godot_instance_destroy_func p_destroy_func);
-	void (*godot_nativescript_register_tool_class)(void *p_gdnative_handle, const char *p_name, const char *p_base, godot_instance_create_func p_create_func, godot_instance_destroy_func p_destroy_func);
-	void (*godot_nativescript_register_method)(void *p_gdnative_handle, const char *p_name, const char *p_function_name, godot_method_attributes p_attr, godot_instance_method p_method);
-	void (*godot_nativescript_register_property)(void *p_gdnative_handle, const char *p_name, const char *p_path, godot_property_attributes *p_attr, godot_property_set_func p_set_func, godot_property_get_func p_get_func);
-	void (*godot_nativescript_register_signal)(void *p_gdnative_handle, const char *p_name, const godot_signal *p_signal);
-	void *(*godot_nativescript_get_userdata)(godot_object *p_instance);
-} godot_gdnative_api_struct;
+} godot_gdnative_core_api_struct;
 
 #ifdef __cplusplus
 }

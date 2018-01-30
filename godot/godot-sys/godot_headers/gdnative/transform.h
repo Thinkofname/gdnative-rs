@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,6 +27,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
+
 #ifndef GODOT_TRANSFORM_H
 #define GODOT_TRANSFORM_H
 
@@ -45,19 +46,28 @@ typedef struct {
 } godot_transform;
 #endif
 
+// reduce extern "C" nesting for VS2013
+#ifdef __cplusplus
+}
+#endif
+
 #include <gdnative/basis.h>
 #include <gdnative/gdnative.h>
 #include <gdnative/variant.h>
 #include <gdnative/vector3.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void GDAPI godot_transform_new_with_axis_origin(godot_transform *r_dest, const godot_vector3 *p_x_axis, const godot_vector3 *p_y_axis, const godot_vector3 *p_z_axis, const godot_vector3 *p_origin);
 void GDAPI godot_transform_new(godot_transform *r_dest, const godot_basis *p_basis, const godot_vector3 *p_origin);
 
 godot_basis GDAPI godot_transform_get_basis(const godot_transform *p_self);
-void GDAPI godot_transform_set_basis(godot_transform *p_self, godot_basis *p_v);
+void GDAPI godot_transform_set_basis(godot_transform *p_self, const godot_basis *p_v);
 
 godot_vector3 GDAPI godot_transform_get_origin(const godot_transform *p_self);
-void GDAPI godot_transform_set_origin(godot_transform *p_self, godot_vector3 *p_v);
+void GDAPI godot_transform_set_origin(godot_transform *p_self, const godot_vector3 *p_v);
 
 godot_string GDAPI godot_transform_as_string(const godot_transform *p_self);
 
@@ -89,9 +99,9 @@ godot_vector3 GDAPI godot_transform_xform_vector3(const godot_transform *p_self,
 
 godot_vector3 GDAPI godot_transform_xform_inv_vector3(const godot_transform *p_self, const godot_vector3 *p_v);
 
-godot_rect3 GDAPI godot_transform_xform_rect3(const godot_transform *p_self, const godot_rect3 *p_v);
+godot_aabb GDAPI godot_transform_xform_aabb(const godot_transform *p_self, const godot_aabb *p_v);
 
-godot_rect3 GDAPI godot_transform_xform_inv_rect3(const godot_transform *p_self, const godot_rect3 *p_v);
+godot_aabb GDAPI godot_transform_xform_inv_aabb(const godot_transform *p_self, const godot_aabb *p_v);
 
 #ifdef __cplusplus
 }

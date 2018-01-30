@@ -11,6 +11,7 @@ fn main() {
         .whitelisted_type("godot.*")
         .whitelisted_function("godot.*")
         .whitelisted_var("godot.*")
+        .whitelisted_type("GDNATIVE.*")
         .derive_default(true)
         .ignore_functions()
         .ctypes_prefix("libc")

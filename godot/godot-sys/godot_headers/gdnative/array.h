@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -46,10 +46,19 @@ typedef struct {
 } godot_array;
 #endif
 
+// reduce extern "C" nesting for VS2013
+#ifdef __cplusplus
+}
+#endif
+
 #include <gdnative/pool_arrays.h>
 #include <gdnative/variant.h>
 
 #include <gdnative/gdnative.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void GDAPI godot_array_new(godot_array *r_dest);
 void GDAPI godot_array_new_copy(godot_array *r_dest, const godot_array *p_src);
@@ -66,6 +75,8 @@ void GDAPI godot_array_set(godot_array *p_self, const godot_int p_idx, const god
 godot_variant GDAPI godot_array_get(const godot_array *p_self, const godot_int p_idx);
 
 godot_variant GDAPI *godot_array_operator_index(godot_array *p_self, const godot_int p_idx);
+
+const godot_variant GDAPI *godot_array_operator_index_const(const godot_array *p_self, const godot_int p_idx);
 
 void GDAPI godot_array_append(godot_array *p_self, const godot_variant *p_value);
 
@@ -112,6 +123,10 @@ godot_int GDAPI godot_array_size(const godot_array *p_self);
 void GDAPI godot_array_sort(godot_array *p_self);
 
 void GDAPI godot_array_sort_custom(godot_array *p_self, godot_object *p_obj, const godot_string *p_func);
+
+godot_int GDAPI godot_array_bsearch(godot_array *p_self, const godot_variant *p_value, const godot_bool p_before);
+
+godot_int GDAPI godot_array_bsearch_custom(godot_array *p_self, const godot_variant *p_value, godot_object *p_obj, const godot_string *p_func, const godot_bool p_before);
 
 void GDAPI godot_array_destroy(godot_array *p_self);
 

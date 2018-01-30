@@ -405,8 +405,7 @@ impl <T> GodotRef<T>
 
             let mut argument_buffer = [ptr::null() as *const libc::c_void; 1];
 
-            let mut godot_name = sys::godot_string::default();
-            (api.godot_string_new_data)(&mut godot_name, name.as_ptr() as *const _, name.len() as _);
+            let mut godot_name = (api.godot_string_chars_to_utf8_with_len)(name.as_ptr() as *const _, name.len() as _);
             argument_buffer[0] = (&godot_name) as *const _ as *const _;
 
             let mut ret = false;
